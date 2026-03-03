@@ -1,0 +1,57 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import 'leaflet/dist/leaflet.css';
+
+:root {
+  --foreground-rgb: 15, 23, 42;
+  --background-rgb: 248, 250, 252;
+}
+
+.dark {
+  --foreground-rgb: 248, 250, 252;
+  --background-rgb: 2, 6, 23;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background-color: rgb(var(--background-rgb));
+  min-height: 100vh;
+  @apply selection:bg-brand-primary/30;
+}
+
+.glass-card {
+  @apply bg-white/50 dark:bg-slate-900/40 backdrop-blur-xl border border-white/20 dark:border-slate-800/50 shadow-premium rounded-2xl overflow-hidden transition-all duration-300;
+}
+
+.sidebar-nav-item {
+  @apply flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/50 font-medium;
+}
+
+.sidebar-nav-item.active {
+  @apply text-brand-primary dark:text-white bg-white dark:bg-slate-800 shadow-sm border-slate-100 dark:border-slate-700/50 border;
+}
+
+.metric-value {
+  @apply text-3xl font-bold tracking-tight font-display;
+}
+
+.chart-shell {
+  @apply w-full h-full relative;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .animate-spin-slow {
+    animation: spin 4s linear infinite;
+  }
+
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #334155 transparent;
+  }
+}
