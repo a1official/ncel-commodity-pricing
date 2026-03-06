@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3.1003.0",
     "@types/leaflet": "^1.9.21",
     "clsx": "^2.1.0",
     "framer-motion": "^11.0.3",
