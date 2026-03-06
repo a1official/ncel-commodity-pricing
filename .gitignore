@@ -29,3 +29,6 @@ backend/ncel_local.db
 backend/ncel.db
 frontend/.next/
 frontend/node_modules/
+
+# Allow documentation images
+!docs/*.png
