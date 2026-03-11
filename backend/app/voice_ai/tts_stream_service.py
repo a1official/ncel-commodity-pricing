@@ -21,14 +21,10 @@ class TTSService:
             return
             
         target_lang = language_code or self.language
-            
-        # Dynamically load .env on every TTS request so the user doesn't have to restart uvicorn
-        env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".env")
-        load_dotenv(dotenv_path=env_path, override=True)
-        self.api_key = os.environ.get("SARVAM_API_KEY", "")
+        self.api_key = settings.SARVAM_API_KEY or os.environ.get("SARVAM_API_KEY", "")
 
         if not self.api_key or self.api_key == "your_sarvam_api_key_here":
-            logger.error("SARVAM_API_KEY is missing! Voice will not play until it is added to .env.")
+            logger.error("SARVAM_API_KEY is missing! Voice will not play.")
             return
             
         url = "https://api.sarvam.ai/text-to-speech"

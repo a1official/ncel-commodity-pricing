@@ -7,6 +7,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import VoiceChatButton from './VoiceChatButton';
 import { getMessages, saveMessage } from '@/lib/db';
+import { API_V1_URL } from '@/lib/config';
 
 type Message = {
     id: string;
@@ -68,7 +69,7 @@ export default function ChatbotWidget() {
             // Prepare history for backend
             const historyForBackend = messages.slice(-5).map(m => ({ role: m.role, text: m.text }));
 
-            const res = await fetch('http://localhost:8000/api/v1/chat', {
+            const res = await fetch(`${API_V1_URL}/chat`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

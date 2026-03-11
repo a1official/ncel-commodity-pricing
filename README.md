@@ -66,6 +66,31 @@ npm install
 npm run dev
 ```
 
+## 🚀 Deployment (Render)
+
+This project is prepared for one-click deployment on **Render**.
+
+### 1. Backend Setup
+- **Service Type**: Web Service
+- **Runtime**: Python
+- **Build Command**: `pip install -r backend/requirements.txt`
+- **Start Command**: `cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+- **Environmental Variables**: 
+  - `GROQ_API_KEY`: Your Groq Key
+  - `SARVAM_API_KEY`: Your Sarvam AI Key
+  - `DATABASE_URL`: (Optional) Your Postgres URL or leave for SQLite.
+  - `CORS_ORIGINS`: Comma-separated list of allowed URLs (e.g., your frontend URL).
+
+### 2. Frontend Setup
+- **Service Type**: Web Service
+- **Runtime**: Node
+- **Build Command**: `cd frontend && npm install && npm run build`
+- **Start Command**: `cd frontend && npm start`
+- **Environmental Variables**:
+  - `NEXT_PUBLIC_API_URL`: The URL of your deployed backend.
+
+---
+
 ## 📂 Project Structure
 
 - `/backend`: Core API and services.

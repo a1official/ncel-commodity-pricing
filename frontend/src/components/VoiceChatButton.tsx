@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Phone, PhoneOff, Loader2 } from 'lucide-react';
 import VoiceWaveform from './VoiceWaveform';
 import { getMessages, saveMessage } from '@/lib/db';
+import { WS_BASE_URL } from '@/lib/config';
 
 export default function VoiceChatButton({
     onServerResponse,
@@ -60,7 +61,7 @@ export default function VoiceChatButton({
 
     useEffect(() => {
         const connect = () => {
-            const ws = new WebSocket('ws://localhost:8000/ws/voice-chat');
+            const ws = new WebSocket(`${WS_BASE_URL}/ws/voice-chat`);
             ws.onopen = () => console.log('Voice Socket Connected');
             ws.onmessage = async (e) => {
                 if (typeof e.data === 'string') {

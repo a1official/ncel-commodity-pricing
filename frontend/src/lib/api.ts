@@ -1,7 +1,7 @@
-const API_URL = 'http://localhost:8000/api/v1';
+import { API_V1_URL } from './config';
 
 export async function fetchCommodities() {
-    const response = await fetch(`${API_URL}/commodities`);
+    const response = await fetch(`${API_V1_URL}/commodities`);
     if (!response.ok) {
         throw new Error('Failed to fetch commodities');
     }
@@ -9,7 +9,7 @@ export async function fetchCommodities() {
 }
 
 export async function fetchMarkets() {
-    const response = await fetch(`${API_URL}/markets`);
+    const response = await fetch(`${API_V1_URL}/markets`);
     if (!response.ok) {
         throw new Error('Failed to fetch markets');
     }
@@ -31,7 +31,7 @@ export async function fetchPrices(params: {
         if (value) query.append(key, value.toString());
     });
 
-    const response = await fetch(`${API_URL}/prices?${query.toString()}`);
+    const response = await fetch(`${API_V1_URL}/prices?${query.toString()}`);
     if (!response.ok) {
         throw new Error('Failed to fetch prices');
     }
@@ -39,7 +39,7 @@ export async function fetchPrices(params: {
 }
 
 export async function fetchDailyAverage(commodityId: number) {
-    const response = await fetch(`${API_URL}/insights/daily-average?commodity_id=${commodityId}`);
+    const response = await fetch(`${API_V1_URL}/insights/daily-average?commodity_id=${commodityId}`);
     if (!response.ok) {
         throw new Error('Failed to fetch daily average');
     }
@@ -47,7 +47,7 @@ export async function fetchDailyAverage(commodityId: number) {
 }
 
 export async function triggerIngestion() {
-    const response = await fetch(`${API_URL}/ingest`, {
+    const response = await fetch(`${API_V1_URL}/ingest`, {
         method: 'POST',
     });
     if (!response.ok) {
@@ -57,7 +57,7 @@ export async function triggerIngestion() {
 }
 
 export async function fetchHybridForecast(commodityId: number) {
-    const response = await fetch(`${API_URL}/forecast/${commodityId}`);
+    const response = await fetch(`${API_V1_URL}/forecast/${commodityId}`);
     if (!response.ok) {
         throw new Error('Forecast discovery failed');
     }

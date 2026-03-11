@@ -1,0 +1,32 @@
+services:
+  # Backend FastAPI Service
+  - type: web
+    name: ncel-backend
+    env: python
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        value: sqlite:///ncel.db # Fallback to sqlite if no Postgres is linked
+      - key: CORS_ORIGINS
+        value: "https://your-frontend-link.onrender.com"
+      - key: GROQ_API_KEY
+        sync: false
+      - key: SARVAM_API_KEY
+        sync: false
+
+  # Frontend Next.js Service
+  - type: web
+    name: ncel-frontend
+    env: node
+    buildCommand: cd frontend && npm install && npm run build
+    startCommand: cd frontend && npm start
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        fromValue: https://ncel-backend.onrender.com
+
+databases:
+  - name: ncel-db
+    databaseName: commodity_db
+    user: postgres
+    plan: free
