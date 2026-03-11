@@ -23,10 +23,9 @@ services:
     startCommand: cd frontend && npm start
     envVars:
       - key: NEXT_PUBLIC_API_URL
-        fromValue: https://ncel-backend.onrender.com
+        value: https://ncel-backend.onrender.com
 
 databases:
   - name: ncel-db
     databaseName: commodity_db
-    user: postgres
     plan: free
