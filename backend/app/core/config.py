@@ -181,6 +181,14 @@ class Settings(BaseSettings):
         extra="ignore"
     )
 
+    @property
+    def sync_database_url(self) -> str:
+        """Handle Render's 'postgres://' prefix for SQLAlchemy."""
+        url = self.DATABASE_URL
+        if url and url.startswith("postgres://"):
+            url = url.replace("postgres://", "postgresql://", 1)
+        return url
+
 
 # Create global settings instance
 settings = Settings()

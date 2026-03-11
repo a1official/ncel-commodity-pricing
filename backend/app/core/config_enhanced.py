@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     APEDA_API_KEY: Optional[str] = None
     MPEDA_API_KEY: Optional[str] = None
     GROQ_API_KEY: Optional[str] = None
+    SARVAM_API_KEY: Optional[str] = None
     
     # ========================================================================
     # REDIS CONFIGURATION (Optional)
@@ -45,7 +46,7 @@ class Settings(BaseSettings):
     # ========================================================================
     # CORS CONFIGURATION
     # ========================================================================
-    CORS_ORIGINS: List[str] = [
+    CORS_ORIGINS: List[str] | str = [
         "http://localhost:3000",
         "http://localhost:8000",
         "http://localhost:5173"
@@ -179,6 +180,14 @@ class Settings(BaseSettings):
         case_sensitive=True,
         extra="ignore"
     )
+
+    @property
+    def sync_database_url(self) -> str:
+        """Handle Render's 'postgres://' prefix for SQLAlchemy."""
+        url = self.DATABASE_URL
+        if url and url.startswith("postgres://"):
+            url = url.replace("postgres://", "postgresql://", 1)
+        return url
 
 
 # Create global settings instance
