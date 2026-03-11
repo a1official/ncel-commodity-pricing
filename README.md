@@ -81,10 +81,18 @@ This project is prepared for one-click deployment on **Render**.
   - `DATABASE_URL`: (Optional) Your Postgres URL or leave for SQLite.
   - `CORS_ORIGINS`: Comma-separated list of allowed URLs (e.g., your frontend URL).
 
-### 2. Frontend Setup
+### 2. Frontend Setup (Vercel - Recommended)
+- **Framework Preset**: Next.js
+- **Root Directory**: `frontend`
+- **Build Command**: `npm run build`
+- **Install Command**: `npm install --legacy-peer-deps`
+- **Environmental Variables**:
+  - `NEXT_PUBLIC_API_URL`: The URL of your deployed Render backend (e.g., `https://ncel-backend.onrender.com`).
+
+### 3. Frontend Setup (Render Alternate)
 - **Service Type**: Web Service
 - **Runtime**: Node
-- **Build Command**: `cd frontend && npm install && npm run build`
+- **Build Command**: `cd frontend && npm install --legacy-peer-deps && npm run build`
 - **Start Command**: `cd frontend && npm start`
 - **Environmental Variables**:
   - `NEXT_PUBLIC_API_URL`: The URL of your deployed backend.
