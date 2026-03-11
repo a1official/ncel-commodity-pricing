@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
-import { Inter, Outfit } from "next/ state/google";
+import { Inter, Outfit } from "next/font/google";
 import "./globals.css";
 import Sidebar from "@/components/Sidebar";
 import TopBar from "@/components/TopBar";
 import { UserProvider } from "@/context/UserContext";
-import Chatbot from "@/components/Chatbot";
+import ChatbotWidget from "@/components/ChatbotWidget";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
-const outfit = Outfit({ subsets: ["latin"], variable: "-- state/google" });
+const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit" });
 
 export const metadata: Metadata = {
     title: "NCEL | Commodity Market Intelligence",
@@ -32,8 +32,8 @@ export default function RootLayout({
                             </main>
                         </div>
                     </div>
-                    <Chatbot />
                 </UserProvider>
+                <ChatbotWidget />
             </body>
         </html>
     );

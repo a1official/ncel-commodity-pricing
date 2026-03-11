@@ -21,12 +21,15 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUser } from '@/context/UserContext';
+import { triggerIngestion } from '@/lib/api';
 
 export default function SettingsPage() {
     const { userName, userRole, updateUser } = useUser();
     const [activeTab, setActiveTab] = useState('Profile Info');
     const [isSaving, setIsSaving] = useState(false);
+    const [isIngesting, setIsIngesting] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
+    const [ingestStatus, setIngestStatus] = useState<string | null>(null);
 
     // Form States
     const [profile, setProfile] = useState({
@@ -61,6 +64,22 @@ export default function SettingsPage() {
         }, 1200);
     };
 
+    const handleRunIngestion = async () => {
+        setIsIngesting(true);
+        setIngestStatus('Initiating Signal Mesh...');
+        try {
+            await triggerIngestion();
+            setIngestStatus('Pipeline executed successfully.');
+            setTimeout(() => setIngestStatus(null), 3000);
+        } catch (err) {
+            console.error(err);
+            setIngestStatus('Connection to ingestion node failed.');
+            setTimeout(() => setIngestStatus(null), 5000);
+        } finally {
+            setIsIngesting(false);
+        }
+    };
+
     return (
         <div className="space-y-8 max-w-[1200px] mx-auto pb-20">
             {/* Header */}
@@ -72,6 +91,7 @@ export default function SettingsPage() {
                 <AnimatePresence>
                     {showSuccess && (
                         <motion.div
+                            key="success-toast"
                             initial={{ opacity: 0, y: -20 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -20 }}
@@ -118,6 +138,7 @@ export default function SettingsPage() {
                     <AnimatePresence mode="wait">
                         {activeTab === 'Profile Info' && (
                             <motion.div
+                                key="profile-info-tab"
                                 initial={{ opacity: 0, x: 20 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 exit={{ opacity: 0, x: -20 }}
@@ -213,6 +234,7 @@ export default function SettingsPage() {
                                                 className={`w-12 h-6 rounded-full relative cursor-pointer transition-colors ${preferences.themePresence ? 'bg-brand-primary' : 'bg-slate-200 dark:bg-slate-800'}`}
                                             >
                                                 <motion.div
+                                                    initial={false}
                                                     animate={{ x: preferences.themePresence ? 26 : 4 }}
                                                     className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm"
                                                 />
@@ -232,6 +254,7 @@ export default function SettingsPage() {
                                                 className={`w-12 h-6 rounded-full relative cursor-pointer transition-colors ${preferences.highDensityCharts ? 'bg-brand-primary' : 'bg-slate-200 dark:bg-slate-800'}`}
                                             >
                                                 <motion.div
+                                                    initial={false}
                                                     animate={{ x: preferences.highDensityCharts ? 26 : 4 }}
                                                     className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm"
                                                 />
@@ -247,10 +270,19 @@ export default function SettingsPage() {
                                             <h3 className="text-lg font-bold dark:text-white">Data Pipeline Integration</h3>
                                             <p className="text-xs text-slate-500 mt-1">Direct feeds currently mapped to your surveillance node.</p>
                                         </div>
-                                        <button className="flex items-center space-x-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-xl text-xs font-bold hover:text-brand-primary transition-colors">
-                                            <Database className="w-3 h-3" />
-                                            <span>Manage Feeds</span>
-                                        </button>
+                                        <div className="flex items-center space-x-3">
+                                            {ingestStatus && (
+                                                <span className="text-[10px] font-bold text-brand-primary animate-pulse">{ingestStatus}</span>
+                                            )}
+                                            <button
+                                                onClick={handleRunIngestion}
+                                                disabled={isIngesting}
+                                                className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${isIngesting ? 'bg-slate-100 text-slate-400' : 'bg-brand-primary text-white shadow-lg shadow-brand-primary/20 hover:scale-[1.05]'}`}
+                                            >
+                                                {isIngesting ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
+                                                <span>{isIngesting ? 'Syncing...' : 'Sync Intelligence'}</span>
+                                            </button>
+                                        </div>
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         {[
@@ -276,6 +308,7 @@ export default function SettingsPage() {
 
                         {activeTab !== 'Profile Info' && (
                             <motion.div
+                                key="standby-tab"
                                 initial={{ opacity: 0, scale: 0.95 }}
                                 animate={{ opacity: 1, scale: 1 }}
                                 exit={{ opacity: 0, scale: 0.95 }}

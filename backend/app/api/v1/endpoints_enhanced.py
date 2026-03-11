@@ -360,6 +360,7 @@ def get_all_forecasts(
 # ============================================================================
 
 @router.get("/analytics/daily-average", tags=["Analytics"])
+@router.get("/insights/daily-average", tags=["Analytics"])
 def get_daily_average(
     commodity_id: int,
     db: Session = Depends(get_db)
@@ -369,12 +370,17 @@ def get_daily_average(
         .filter(models.PriceRecord.commodity_id == commodity_id)\
         .scalar()
     
+    avg_normalized = db.query(func.avg(models.PriceRecord.normalized_price_per_kg))\
+        .filter(models.PriceRecord.commodity_id == commodity_id)\
+        .scalar()
+    
     if avg_price is None:
         raise HTTPException(status_code=404, detail="No data found")
     
     return {
         "commodity_id": commodity_id,
         "average_price": float(avg_price),
+        "average_price_per_kg": float(avg_normalized or (avg_price / 100)),
         "unit": "INR"
     }
 
@@ -456,24 +462,27 @@ def get_source_comparison(
 # INGESTION ENDPOINTS
 # ============================================================================
 
+from fastapi import BackgroundTasks
+
 @router.post("/ingest", tags=["Ingestion"])
-def trigger_ingestion(db: Session = Depends(get_db)):
+async def trigger_ingestion(background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     """
-    Trigger manual data ingestion cycle.
+    Trigger background data ingestion cycle.
     
-    Runs the complete ETL pipeline:
+    Returns immediately and runs the ETL pipeline in the background:
     Fetch Data → Store Raw → Normalize → Load to Warehouse → Trigger Forecast
     """
-    try:
-        from ...ingestion.pipeline_orchestrator import commodity_ingestion_pipeline
-        result = commodity_ingestion_pipeline(datetime.now())
-        return {
-            "status": "success",
-            "message": "Ingestion pipeline completed",
-            "result": result
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ingestion failed: {str(e)}")
+    from ...ingestion.pipeline_orchestrator import commodity_ingestion_pipeline
+    
+    # We trigger the pipeline in the background so the UI doesn't hang
+    # Prefect flows are already designed to be robust under this pattern
+    background_tasks.add_task(commodity_ingestion_pipeline, datetime.now())
+    
+    return {
+        "status": "success",
+        "message": "Ingestion cycle started in background",
+        "timestamp": datetime.now().isoformat()
+    }
 
 
 @router.post("/ingest/{source_name}", tags=["Ingestion"])

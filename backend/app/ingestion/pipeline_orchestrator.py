@@ -4,8 +4,23 @@ Orchestrates the complete ETL workflow:
 Fetch Data → Store Raw → Normalize → Load to Warehouse → Trigger Forecast
 """
 
-from prefect import flow, task, get_run_logger
-from prefect.task_runs import task_run
+try:
+    from prefect import flow, task, get_run_logger
+    from prefect.task_runs import task_run
+except ImportError:
+    # Dummy mocks for prefect
+    def task(*args, **kwargs):
+        def decorator(func): return func
+        return decorator if not args or not callable(args[0]) else args[0]
+    
+    def flow(*args, **kwargs):
+        def decorator(func): return func
+        return decorator if not args or not callable(args[0]) else args[0]
+    
+    def get_run_logger():
+        import logging
+        return logging.getLogger("dummy_prefect")
+
 from datetime import datetime, timedelta
 from typing import List, Dict, Any
 import json
@@ -359,6 +374,8 @@ def _infer_category(commodity_name: str) -> str:
     
     if any(grain in commodity_lower for grain in ["rice", "wheat", "maize", "millets"]):
         return "Grain"
+    elif "index" in commodity_lower:
+        return "Intelligence Index"
     elif any(spice in commodity_lower for spice in ["chilli", "turmeric", "cumin", "jeera"]):
         return "Spice"
     elif any(fruit in commodity_lower for fruit in ["banana", "grapes", "pineapple", "tomato"]):

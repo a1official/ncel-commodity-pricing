@@ -26,6 +26,7 @@ def get_prices(
     variety_name: Optional[str] = Query(None),
     start_date: Optional[date] = Query(None),
     end_date: Optional[date] = Query(None),
+    source_name: Optional[str] = Query(None),
 ):
     query = db.query(
         models.PriceRecord,
@@ -51,6 +52,8 @@ def get_prices(
         query = query.filter(models.Commodity.name.ilike(f"%{commodity_name}%"))
     if variety_name:
         query = query.filter(models.Variety.name.ilike(f"%{variety_name}%"))
+    if source_name:
+        query = query.filter(models.Source.name.ilike(f"%{source_name}%"))
     if start_date:
         query = query.filter(models.PriceRecord.date >= start_date)
     if end_date:
@@ -81,11 +84,15 @@ def get_daily_average(commodity_id: int, db: Session = Depends(get_db)):
 
 @router.post("/ingest")
 def trigger_ingestion():
-    from ...ingestion.orchestrator import IngestionOrchestrator
+    from ...ingestion.pipeline_orchestrator import commodity_ingestion_pipeline
     try:
-        orchestrator = IngestionOrchestrator()
-        orchestrator.run_daily_ingestion()
-        return {"status": "success", "message": "Intelligence discovery cycle complete."}
+        # Run the enhanced multi-source pipeline
+        summary = commodity_ingestion_pipeline()
+        return {
+            "status": "success", 
+            "message": "Intelligence discovery cycle complete.",
+            "summary": summary
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

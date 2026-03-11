@@ -50,10 +50,14 @@ export default function CommoditiesPage() {
         try {
             setSyncing(true);
             await triggerIngestion();
-            await loadData();
+            setSyncing(false);
+
+            // Wait for a few seconds for the background task to start before refreshing list
+            setTimeout(() => {
+                loadData();
+            }, 2000);
         } catch (err) {
             console.error(err);
-        } finally {
             setSyncing(false);
         }
     };

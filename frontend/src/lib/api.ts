@@ -22,6 +22,7 @@ export async function fetchPrices(params: {
     market_id?: number;
     commodity_name?: string;
     variety_name?: string;
+    source_name?: string;
     start_date?: string;
     end_date?: string;
 }) {

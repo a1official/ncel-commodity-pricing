@@ -3,7 +3,7 @@ Enhanced Configuration Management
 Loads settings from environment variables with sensible defaults.
 """
 
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List, Optional
 import os
 
@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     FAO_API_KEY: Optional[str] = None
     APEDA_API_KEY: Optional[str] = None
     MPEDA_API_KEY: Optional[str] = None
+    GROQ_API_KEY: Optional[str] = None
     
     # ========================================================================
     # REDIS CONFIGURATION (Optional)
@@ -173,10 +174,11 @@ class Settings(BaseSettings):
     FEATURE_ADVANCED_ANALYTICS: bool = True
     FEATURE_SUPPLY_RISK_ASSESSMENT: bool = True
     
-    class Config:
-        """Pydantic configuration."""
-        env_file = ".env"
-        case_sensitive = True
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        case_sensitive=True,
+        extra="ignore"
+    )
 
 
 # Create global settings instance

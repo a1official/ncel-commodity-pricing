@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { fetchPrices, fetchCommodities, triggerIngestion, fetchHybridForecast } from '@/lib/api';
+import { useLiveMarketStream } from '@/hooks/useLivePrices';
 import {
     LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
@@ -35,29 +36,41 @@ export default function Forecasting() {
     const [loading, setLoading] = useState(true);
     const [ingesting, setIngesting] = useState(false);
     const [showIngestSuccess, setShowIngestSuccess] = useState(false);
+
+    // 0. Live WebSocket Stream for NCDEX/MCX
+    const { ticks, status: wsStatus } = useLiveMarketStream();
     const [selectedCommodity, setSelectedCommodity] = useState<any>(null);
     const [backendForecast, setBackendForecast] = useState<any>(null);
 
     const handleRealtimeIngest = async () => {
         setIngesting(true);
         try {
+            // Trigger the async background sync on the backend
             await triggerIngestion();
+
+            // Immediately bring button back to success state
+            setIngesting(false);
             setShowIngestSuccess(true);
             setTimeout(() => setShowIngestSuccess(false), 3000);
 
-            // Reload data after ingestion
-            if (selectedCommodity) {
-                const priceData = await fetchPrices({ commodity_id: selectedCommodity.id });
-                setPrices(priceData);
-                const allData = await fetchPrices({});
-                const intelligenceSignals = allData.filter((d: any) =>
-                    ["USDA", "ISMA", "NCDEX", "MCX", "FAO", "S&P Global", "Agriwatch"].includes(d.source_name)
-                );
-                setSignals(intelligenceSignals);
-            }
+            // Give the backend a few seconds head start before reloading data
+            setTimeout(async () => {
+                if (selectedCommodity) {
+                    const priceData = await fetchPrices({ commodity_id: selectedCommodity.id });
+                    setPrices(priceData);
+
+                    const intelligenceSources = ["USDA", "NCDEX", "MCX", "FAO", "Agriwatch"];
+                    const signalResults = await Promise.all(
+                        intelligenceSources.map(source => fetchPrices({ source_name: source }))
+                    );
+
+                    setSignals(signalResults.flat().sort((a, b) =>
+                        new Date(b.date).getTime() - new Date(a.date).getTime()
+                    ));
+                }
+            }, 1500);
         } catch (err) {
             console.error("Ingestion failed", err);
-        } finally {
             setIngesting(false);
         }
     };
@@ -93,11 +106,17 @@ export default function Forecasting() {
                 setPrices(priceData);
                 setBackendForecast(forecastData);
 
-                // Fetch multi-source signals
-                const allData = await fetchPrices({});
-                const intelligenceSignals = allData.filter((d: any) =>
-                    ["USDA", "ISMA", "NCDEX", "MCX", "FAO", "S&P Global", "Agriwatch"].includes(d.source_name)
+                // Fetch multi-source signals explicitly
+                // We use parallel calls to ensure we get data from all intelligence sources
+                const intelligenceSources = ["USDA", "NCDEX", "MCX", "FAO", "Agriwatch"];
+                const signalResults = await Promise.all(
+                    intelligenceSources.map(source => fetchPrices({ source_name: source }))
                 );
+
+                const intelligenceSignals = signalResults.flat().sort((a, b) =>
+                    new Date(b.date).getTime() - new Date(a.date).getTime()
+                );
+
                 setSignals(intelligenceSignals);
             } catch (err) {
                 console.error("Discovery error:", err);

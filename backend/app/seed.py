@@ -1,12 +1,12 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import create_engine
 from app.models.models import Base, Commodity, Variety, Market, State, District, Source, PriceRecord
-from app.core.config import settings
+from app.core.config_enhanced import settings
 from datetime import date, timedelta
 import random
 
 def seed_db():
-    engine = create_engine(settings.get_database_url)
+    engine = create_engine(settings.DATABASE_URL)
     # Drop and recreate for a clean state with new requested data
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)

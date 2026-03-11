@@ -4,22 +4,31 @@ A production-grade, scalable platform for tracking agricultural and marine commo
 
 ## 🚀 Key Features
 
+- **AI Voice Assistant**: Native voice-to-voice communication using Groq (STT/Whisper) and Sarvam AI Bulbul (v3 TTS).
+- **Persistent Chat Memory**: Local conversation history using IndexedDB, providing persistence across browser refreshes.
+- **Dynamic Language Support**: Real-time translation and voice output across 7+ regional Indian languages.
 - **Commodity Agnostic**: Onboard new commodities via metadata/connectors without core code changes.
 - **Normalization Engine**: Standardizes units, maps variety aliases using fuzzy matching, and deduplicates markets.
 - **Pluggable Connectors**: Modular architecture for Agmarknet, eNAM, NFDB, and state mandi boards.
 - **Modern Analytics**: Next.js dashboard with historical trends, heatmaps, and arrival vs price analysis.
-- **Scalable Architecture**: Containerized with Docker, PostgreSQL for persistence, and FastAPI for real-time access.
 
 ## 🛠 Tech Stack
 
-- **Backend**: Python 3.11, FastAPI, SQLAlchemy, PostgreSQL.
+- **Backend**: Python 3.11, FastAPI, SQLAlchemy, Groq SDK, Sarvam AI API.
 - **Data Engineering**: RapidFuzz (Normalization), Requests/BS4 (Ingestion).
-- **Frontend**: Next.js 14, Tailwind CSS, Recharts, Framer Motion.
+- **Frontend**: Next.js 14, Tailwind CSS, Recharts, Framer Motion, IndexedDB.
 - **Deployment**: Docker, Docker Compose.
 
 ## 🏃 Getting Started
 
-### 1. Prerequisites
+### 1. Environment Variables
+Create a `.env` file in both `root` and `backend/` directories with your API keys:
+```env
+GROQ_API_KEY=your_groq_api_key_here
+SARVAM_API_KEY=your_sarvam_api_key_here
+```
+
+### 2. Prerequisites
 - Docker & Docker Compose
 - Node.js (for local frontend development)
 - Python 3.11 (for local backend development)

@@ -7,11 +7,12 @@ from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional
 import requests
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from app.core.config import settings
 import logging
 
 logger = logging.getLogger(__name__)
+
 
 
 class BaseConnector(ABC):
@@ -211,53 +212,91 @@ class USDAConnector(BaseConnector):
 
 
 class FAOConnector(BaseConnector):
-    """Connector for FAO Food Price Index."""
+    """Connector for FAO Food Price Index (CSV-based pipeline)."""
     
     def __init__(self):
         super().__init__("FAO")
-        self.api_url = "https://www.fao.org/webservices/foodpriceindex"
-        self.api_key = settings.FAO_API_KEY
+        # Direct URL discovered from worldfoodsituation/foodpricesindex/en/
+        self.csv_url = "https://www.fao.org/media/docs/worldfoodsituationlibraries/default-document-library/food_price_indices_data_csv_mar.csv?sfvrsn=523ebd2a_72&download=true"
 
     def fetch_data(self, date_obj: datetime, **kwargs) -> List[Dict[str, Any]]:
-        # FAO provides monthly indices
-        return self._get_mock_data(date_obj)
-
-    def _get_mock_data(self, date_obj: datetime) -> List[Dict[str, Any]]:
-        """Return mock FAO Food Price Index data."""
-        return [
-            {
-                "month": date_obj.strftime("%B %Y"),
-                "cereals_index": "104.5",
-                "meat_index": "98.2",
-                "dairy_index": "102.1",
-                "oils_index": "107.3",
-                "sugar_index": "95.6",
-                "date": date_obj.strftime("%Y-%m-%d")
-            }
-        ]
+        """Fetch FAO Food Price Index from live CSV."""
+        try:
+            import pandas as pd
+            import io
+            
+            logger.info(f"Fetching FAO CSV data from {self.csv_url}")
+            response = requests.get(self.csv_url, timeout=self.timeout)
+            response.raise_for_status()
+            
+            # Use utf-8-sig to handle Byte Order Mark (BOM)
+            content = response.content.decode('utf-8-sig')
+            
+            # FAO CSV structure: 
+            # Row 1: Title, Row 2: Base, Row 3: Headers, Row 4: Empty, Row 5+: Data
+            df = pd.read_csv(io.StringIO(content), skiprows=2)
+            
+            # Cleaning: drop completely empty rows or columns (FAO uses trailing commas)
+            df = df.dropna(how='all', axis=1)
+            df = df.dropna(subset=['Date'])
+            
+            # Format Date column and filter for the month/year of requested date_obj
+            requested_month = date_obj.strftime("%Y-%m")
+            
+            # Search for the exact month (e.g., "2024-03")
+            target_row = df[df['Date'].astype(str).str.contains(requested_month)]
+            
+            if target_row.empty:
+                # If exact month not found, try previous month
+                prev_month = (date_obj.replace(day=1) - timedelta(days=1)).strftime("%Y-%m")
+                target_row = df[df['Date'].astype(str).str.contains(prev_month)]
+            
+            if not target_row.empty:
+                record = target_row.iloc[0].to_dict()
+                return [{
+                    "date": record["Date"],
+                    "food_price_index": record["Food Price Index"],
+                    "meat": record.get("Meat", 0),
+                    "dairy": record.get("Dairy", 0),
+                    "cereals": record.get("Cereals", 0),
+                    "oils": record.get("Oils", 0),
+                    "sugar": record.get("Sugar", 0)
+                }]
+            
+            return []
+            
+        except Exception as e:
+            logger.error(f"FAO CSV pipeline error: {e}")
+            return []
 
     def transform_to_standard(self, raw_data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         standardized = []
         for record in raw_data:
             try:
-                date = datetime.strptime(record.get("date", "2026-01-01"), "%Y-%m-%d").date()
+                # Expecting YYYY-MM
+                date_str = record["date"]
+                price_date = datetime.strptime(date_str, "%Y-%m").date()
+                
+                # We map the "Cereals" index as the primary signal for Grain category
+                cereal_index = float(record.get("cereals", 100))
+                
                 standardized.append({
                     "source": self.source_name,
-                    "date": date,
+                    "date": price_date,
                     "state": "Global",
                     "district": "FAO",
                     "market": "FAO Index",
                     "commodity": "Food Price Index",
                     "variety": "Cereals",
-                    "min_price": float(record.get("cereals_index", 100)),
-                    "max_price": float(record.get("cereals_index", 100)),
-                    "modal_price": float(record.get("cereals_index", 100)),
+                    "min_price": cereal_index,
+                    "max_price": cereal_index,
+                    "modal_price": cereal_index,
                     "unit": "Index",
                     "arrival_quantity": 0,
-                    "normalized_price_per_kg": 0
+                    "normalized_price_per_kg": 0 # Non-price signal
                 })
             except (KeyError, ValueError, TypeError) as e:
-                logger.warning(f"Skipping malformed FAO record: {e}")
+                logger.warning(f"Skipping malformed FAO standardized record: {e}")
                 continue
         return standardized
 
@@ -448,6 +487,17 @@ class NCDEXConnector(BaseConnector):
         return standardized
 
 
+    def get_live_ticks(self) -> List[Dict[str, Any]]:
+        """Simulate real-time tick data with slight variance."""
+        import random
+        base_data = self._get_mock_data(datetime.now())
+        for item in base_data:
+            variance = random.uniform(-10.5, 15.5)
+            item["spot_price"] = str(float(item["spot_price"]) + variance)
+            item["future_price"] = str(float(item["future_price"]) + variance)
+            item["timestamp"] = datetime.now().isoformat()
+        return base_data
+
 class MCXConnector(BaseConnector):
     """Connector for MCX Commodity Exchange Prices."""
     
@@ -456,6 +506,17 @@ class MCXConnector(BaseConnector):
 
     def fetch_data(self, date_obj: datetime, **kwargs) -> List[Dict[str, Any]]:
         return self._get_mock_data(date_obj)
+
+    def get_live_ticks(self) -> List[Dict[str, Any]]:
+        """Simulate real-time tick data with slight variance."""
+        import random
+        base_data = self._get_mock_data(datetime.now())
+        for item in base_data:
+            variance = random.uniform(-25.0, 45.0)
+            item["spot_price"] = str(float(item["spot_price"]) + variance)
+            item["future_price"] = str(float(item["future_price"]) + variance)
+            item["timestamp"] = datetime.now().isoformat()
+        return base_data
 
     def _get_mock_data(self, date_obj: datetime) -> List[Dict[str, Any]]:
         """Return mock MCX commodity prices."""

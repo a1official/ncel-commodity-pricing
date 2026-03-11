@@ -17,6 +17,9 @@ export default function CommodityDetail({ params }: { params: { id: string } }) 
     const [average, setAverage] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [activeSource, setActiveSource] = useState('All Sources');
+
+    const sources = ['All Sources', 'Agmarknet', 'USDA', 'FAO', 'APEDA', 'MPEDA', 'NCDEX', 'MCX'];
 
     useEffect(() => {
         async function loadData() {
@@ -33,7 +36,16 @@ export default function CommodityDetail({ params }: { params: { id: string } }) 
                 setCommodity(current);
                 setAverage(dailyAvg);
 
-                const history = await fetchPrices({ commodity_id: parseInt(params.id) });
+                let params_api: any = { commodity_id: parseInt(params.id) };
+
+                // Special handling for Global Intelligence sources that use different commodity models
+                if (activeSource === 'FAO') {
+                    params_api = { commodity_name: 'Food Price Index' };
+                } else if (activeSource !== 'All Sources') {
+                    params_api.source_name = activeSource;
+                }
+
+                const history = await fetchPrices(params_api);
                 setPrices(history);
 
             } catch (err) {
@@ -49,7 +61,7 @@ export default function CommodityDetail({ params }: { params: { id: string } }) 
             setError('Invalid intelligence identifier.');
             setLoading(false);
         }
-    }, [params.id]);
+    }, [params.id, activeSource]);
 
     // Aggregate data for the chart (Average modal price per day)
     const aggregatedChartData = React.useMemo(() => {
@@ -188,7 +200,7 @@ export default function CommodityDetail({ params }: { params: { id: string } }) 
                     <div className="p-4 glass-card bg-white dark:bg-slate-900 min-w-[200px]">
                         <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Mean Terminal Price</p>
                         <div className="flex items-end space-x-2">
-                            <span className="text-2xl font-bold dark:text-white">₹{(average?.average_price_per_kg * 100).toFixed(2)}</span>
+                            <span className="text-2xl font-bold dark:text-white">₹{average?.average_price_per_kg ? (average.average_price_per_kg * 100).toFixed(2) : '0.00'}</span>
                             <span className="text-emerald-500 text-xs font-bold mb-1">Modal / Qtl</span>
                         </div>
                     </div>
@@ -205,10 +217,14 @@ export default function CommodityDetail({ params }: { params: { id: string } }) 
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
                 {/* Main Price & Arrival Chart */}
                 <div className="xl:col-span-2 glass-card p-8 bg-white dark:bg-slate-900/40">
-                    <div className="flex justify-between items-center mb-10">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
                         <div>
                             <h2 className="text-xl font-bold dark:text-white">Price Velocity & Terminal Density</h2>
                             <p className="text-sm text-slate-500 font-medium">Time-series audit of price discovery (₹/Qtl)</p>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <TrendingUp className="w-4 h-4 text-brand-primary" />
+                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg">Real-time Feed</span>
                         </div>
                     </div>
 
@@ -274,10 +290,24 @@ export default function CommodityDetail({ params }: { params: { id: string } }) 
 
             {/* Mandi Drilldown Table */}
             <div className="glass-card">
-                <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/40">
+                <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center bg-slate-50/50 dark:bg-slate-900/40 gap-6">
                     <div>
                         <h3 className="text-xl font-bold dark:text-white">Terminal Price Discovery</h3>
                         <p className="text-sm text-slate-500 mt-1">Variety-level audit across top performing markets</p>
+                    </div>
+                    <div className="flex flex-wrap bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+                        {sources.map(src => (
+                            <button
+                                key={src}
+                                onClick={() => setActiveSource(src)}
+                                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${activeSource === src
+                                    ? 'bg-white dark:bg-slate-700 text-brand-primary shadow-sm'
+                                    : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                                    }`}
+                            >
+                                {src}
+                            </button>
+                        ))}
                     </div>
                 </div>
                 <div className="overflow-x-auto">
@@ -316,12 +346,16 @@ export default function CommodityDetail({ params }: { params: { id: string } }) 
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="px-8 py-4 text-center">
-                                        <span className="text-sm font-bold dark:text-slate-200">{parseFloat(record.arrival_quantity).toFixed(0)}</span>
-                                        <span className="text-[10px] text-slate-500 ml-1">MT</span>
+                                    <td className="px-8 py-4 text-center font-mono text-xs text-slate-500">
+                                        {record.source_name === 'FAO' ? '--' : `${parseFloat(record.arrival_quantity).toFixed(0)} `}
+                                        <span className="text-[10px] uppercase">{record.source_name === 'FAO' ? 'Pts' : 'MT'}</span>
                                     </td>
-                                    <td className="px-8 py-4 text-right text-sm text-slate-500">₹{parseFloat(record.min_price).toFixed(0)}</td>
-                                    <td className="px-8 py-4 text-right text-sm text-slate-500">₹{parseFloat(record.max_price).toFixed(0)}</td>
+                                    <td className="px-8 py-4 text-right text-sm text-slate-500">
+                                        {record.source_name === 'FAO' ? '' : '₹'}{parseFloat(record.min_price).toFixed(0)}
+                                    </td>
+                                    <td className="px-8 py-4 text-right text-sm text-slate-500">
+                                        {record.source_name === 'FAO' ? '' : '₹'}{parseFloat(record.max_price).toFixed(0)}
+                                    </td>
                                     <td className="px-8 py-4 text-right">
                                         <div className="flex flex-col items-end">
                                             <span className={`text-[9px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded ${record.source_name === 'Agmarknet' ? 'bg-indigo-500/10 text-indigo-500' : 'bg-slate-500/10 text-slate-500'}`}>
