@@ -14,7 +14,7 @@ rapidfuzz
 scikit-learn
 pandas
 numpy
-tensorflow
+tensorflow-cpu
 xgboost
 gunicorn
 alembic
