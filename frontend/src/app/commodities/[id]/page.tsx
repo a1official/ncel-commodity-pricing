@@ -20,6 +20,9 @@ export default function CommodityDetail({ params }: { params: { id: string } }) 
     const [activeSource, setActiveSource] = useState('All Sources');
 
     const sources = ['All Sources', 'Agmarknet', 'USDA', 'FAO', 'APEDA', 'MPEDA', 'NCDEX', 'MCX'];
+    
+    // Hide source filters for marine commodities since they only come from FMPIS
+    const showSourceFilters = commodity?.category !== 'Marine Products';
 
     useEffect(() => {
         async function loadData() {
@@ -295,20 +298,22 @@ export default function CommodityDetail({ params }: { params: { id: string } }) 
                         <h3 className="text-xl font-bold dark:text-white">Terminal Price Discovery</h3>
                         <p className="text-sm text-slate-500 mt-1">Variety-level audit across top performing markets</p>
                     </div>
-                    <div className="flex flex-wrap bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
-                        {sources.map(src => (
-                            <button
-                                key={src}
-                                onClick={() => setActiveSource(src)}
-                                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${activeSource === src
-                                    ? 'bg-white dark:bg-slate-700 text-brand-primary shadow-sm'
-                                    : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-                                    }`}
-                            >
-                                {src}
-                            </button>
-                        ))}
-                    </div>
+                    {showSourceFilters && (
+                        <div className="flex flex-wrap bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+                            {sources.map(src => (
+                                <button
+                                    key={src}
+                                    onClick={() => setActiveSource(src)}
+                                    className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${activeSource === src
+                                        ? 'bg-white dark:bg-slate-700 text-brand-primary shadow-sm'
+                                        : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                                        }`}
+                                >
+                                    {src}
+                                </button>
+                            ))}
+                        </div>
+                    )}
                 </div>
                 <div className="overflow-x-auto">
                     <table className="w-full">

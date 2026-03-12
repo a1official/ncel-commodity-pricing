@@ -60,7 +60,20 @@ class IngestionOrchestrator:
                 # Intelligent categorization
                 category = "General"
                 name_lower = name.lower()
-                if any(k in name_lower for k in ["basmati", "white rice", "paddy"]):
+                
+                # Marine species categorization (comprehensive list)
+                marine_keywords = [
+                    "shrimp", "prawn", "crab", "lobster", "squid", "cuttlefish", 
+                    "pomfret", "kingfish", "mackerel", "sardine", "tuna", "anchovy", 
+                    "hilsa", "rohu", "catla", "mrigal", "tilapia", "pearl spot", 
+                    "seer fish", "barracuda", "red snapper", "grouper", "sole fish", 
+                    "ribbon fish", "bombay duck", "croaker", "silver pomfret", 
+                    "black pomfret", "indian salmon", "fish", "marine"
+                ]
+                
+                if any(k in name_lower for k in marine_keywords):
+                    category = "Marine Products"
+                elif any(k in name_lower for k in ["basmati", "white rice", "paddy"]):
                     category = "Rice"
                 elif any(k in name_lower for k in ["rice", "wheat", "corn"]):
                     category = "Grains"
@@ -70,8 +83,6 @@ class IngestionOrchestrator:
                     category = "Spices"
                 elif any(k in name_lower for k in ["tomato", "onion", "potato", "grapes", "banana", "pineapple", "apple"]):
                     category = "Fruits & Vegetables"
-                elif any(k in name_lower for k in ["shrimp", "trout", "mackerel", "tuna", "pomfret", "prawns"]):
-                    category = "Marine Products"
                 elif "groundnut" in name_lower:
                     category = "Groundnut"
                 elif "maize" in name_lower or "makka" in name_lower:

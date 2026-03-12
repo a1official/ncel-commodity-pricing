@@ -59,7 +59,7 @@ def get_prices(
     if end_date:
         query = query.filter(models.PriceRecord.date <= end_date)
     
-    results = query.order_by(models.PriceRecord.date.desc()).limit(200).all()
+    results = query.order_by(models.PriceRecord.date.desc()).limit(500).all()
     
     # Flatten results because query returns [(PriceRecord, market_name, state_name, source_name)]
     final_results = []
@@ -95,6 +95,78 @@ def trigger_ingestion():
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/marine/states")
+def get_marine_states(db: Session = Depends(get_db)):
+    """Get all states that have marine commodity data."""
+    from sqlalchemy import distinct
+    
+    states = db.query(distinct(models.State.name))\
+        .join(models.District, models.State.id == models.District.state_id)\
+        .join(models.Market, models.District.id == models.Market.district_id)\
+        .join(models.PriceRecord, models.Market.id == models.PriceRecord.market_id)\
+        .join(models.Commodity, models.PriceRecord.commodity_id == models.Commodity.id)\
+        .join(models.Source, models.PriceRecord.source_id == models.Source.id)\
+        .filter(models.Commodity.category == "Marine Products")\
+        .filter(models.Source.name == "FMPIS")\
+        .order_by(models.State.name)\
+        .all()
+    
+    return [state[0] for state in states]
+
+@router.get("/marine/summary")
+def get_marine_summary(db: Session = Depends(get_db)):
+    """Get marine commodity summary with latest prices by state."""
+    from sqlalchemy import func, desc
+    
+    # Get latest price record for each commodity-state combination
+    subquery = db.query(
+        models.PriceRecord.commodity_id,
+        models.State.name.label("state_name"),
+        func.max(models.PriceRecord.date).label("latest_date")
+    ).join(models.Market, models.PriceRecord.market_id == models.Market.id)\
+     .join(models.District, models.Market.district_id == models.District.id)\
+     .join(models.State, models.District.state_id == models.State.id)\
+     .join(models.Commodity, models.PriceRecord.commodity_id == models.Commodity.id)\
+     .join(models.Source, models.PriceRecord.source_id == models.Source.id)\
+     .filter(models.Commodity.category == "Marine Products")\
+     .filter(models.Source.name == "FMPIS")\
+     .group_by(models.PriceRecord.commodity_id, models.State.name)\
+     .subquery()
+    
+    # Get the actual records with latest prices
+    results = db.query(
+        models.Commodity.name.label("commodity_name"),
+        models.State.name.label("state_name"),
+        models.PriceRecord.modal_price,
+        models.PriceRecord.date,
+        func.count(models.PriceRecord.id).label("record_count")
+    ).join(models.Market, models.PriceRecord.market_id == models.Market.id)\
+     .join(models.District, models.Market.district_id == models.District.id)\
+     .join(models.State, models.District.state_id == models.State.id)\
+     .join(models.Commodity, models.PriceRecord.commodity_id == models.Commodity.id)\
+     .join(models.Source, models.PriceRecord.source_id == models.Source.id)\
+     .join(subquery, 
+           (models.PriceRecord.commodity_id == subquery.c.commodity_id) &
+           (models.State.name == subquery.c.state_name) &
+           (models.PriceRecord.date == subquery.c.latest_date))\
+     .filter(models.Commodity.category == "Marine Products")\
+     .filter(models.Source.name == "FMPIS")\
+     .group_by(models.Commodity.name, models.State.name, models.PriceRecord.modal_price, models.PriceRecord.date)\
+     .order_by(desc(models.PriceRecord.date))\
+     .limit(1000)\
+     .all()
+    
+    return [
+        {
+            "commodity_name": r.commodity_name,
+            "state_name": r.state_name,
+            "modal_price": float(r.modal_price),
+            "date": r.date.isoformat(),
+            "record_count": r.record_count
+        }
+        for r in results
+    ]
 
 @router.get("/forecast/{commodity_id}")
 def get_hybrid_forecast(commodity_id: int, db: Session = Depends(get_db)):

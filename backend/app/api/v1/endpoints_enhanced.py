@@ -356,6 +356,120 @@ def get_all_forecasts(
 
 
 # ============================================================================
+# MARINE ENDPOINTS
+# ============================================================================
+
+@router.get("/marine/states", tags=["Marine"])
+def get_marine_states(db: Session = Depends(get_db)):
+    """Get all states that have marine commodity data."""
+    from sqlalchemy import distinct
+    
+    try:
+        # Import cache service
+        from app.services.cache import get_cache
+        cache = get_cache()
+        
+        # Try to get from cache first
+        if cache.enabled:
+            cached_states = cache.get_marine_states()
+            if cached_states:
+                return cached_states
+    except Exception as e:
+        # If cache fails, continue with database query
+        pass
+    
+    # Query database
+    states = db.query(distinct(models.State.name))\
+        .join(models.District, models.State.id == models.District.state_id)\
+        .join(models.Market, models.District.id == models.Market.district_id)\
+        .join(models.PriceRecord, models.Market.id == models.PriceRecord.market_id)\
+        .join(models.Commodity, models.PriceRecord.commodity_id == models.Commodity.id)\
+        .join(models.Source, models.PriceRecord.source_id == models.Source.id)\
+        .filter(models.Commodity.category == "Marine Products")\
+        .filter(models.Source.name == "FMPIS")\
+        .order_by(models.State.name)\
+        .all()
+    
+    result = [state[0] for state in states]
+    
+    # Try to cache the result
+    try:
+        from app.services.cache import get_cache
+        cache = get_cache()
+        if cache.enabled:
+            cache.set_marine_states(result)
+    except Exception as e:
+        # If cache fails, continue without caching
+        pass
+    
+    return result
+
+@router.get("/marine/summary", tags=["Marine"])
+def get_marine_summary(db: Session = Depends(get_db)):
+    """Get marine commodity summary with latest prices by state."""
+    from sqlalchemy import func, desc
+    
+    try:
+        # Import cache service
+        from app.services.cache import get_cache
+        cache = get_cache()
+        
+        # Try to get from cache first
+        if cache.enabled:
+            cached_summary = cache.get_marine_summary()
+            if cached_summary:
+                return cached_summary
+    except Exception as e:
+        # If cache fails, continue with database query
+        pass
+    
+    try:
+        # Simplified query - get recent marine price records
+        results = db.query(
+            models.Commodity.name.label("commodity_name"),
+            models.State.name.label("state_name"),
+            models.PriceRecord.modal_price,
+            models.PriceRecord.date
+        ).join(models.Market, models.PriceRecord.market_id == models.Market.id)\
+         .join(models.District, models.Market.district_id == models.District.id)\
+         .join(models.State, models.District.state_id == models.State.id)\
+         .join(models.Commodity, models.PriceRecord.commodity_id == models.Commodity.id)\
+         .join(models.Source, models.PriceRecord.source_id == models.Source.id)\
+         .filter(models.Commodity.category == "Marine Products")\
+         .filter(models.Source.name == "FMPIS")\
+         .order_by(desc(models.PriceRecord.date))\
+         .limit(1000)\
+         .all()
+        
+        result = [
+            {
+                "commodity_name": r.commodity_name,
+                "state_name": r.state_name,
+                "modal_price": float(r.modal_price),
+                "date": r.date.isoformat(),
+                "record_count": 1
+            }
+            for r in results
+        ]
+        
+        # Try to cache the result
+        try:
+            from app.services.cache import get_cache
+            cache = get_cache()
+            if cache.enabled:
+                cache.set_marine_summary(result)
+        except Exception as e:
+            # If cache fails, continue without caching
+            pass
+        
+        return result
+        
+    except Exception as e:
+        # If query fails, return empty list
+        return []
+
+
+# ============================================================================
 # ANALYTICS ENDPOINTS
 # ============================================================================
 

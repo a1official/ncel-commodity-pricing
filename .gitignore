@@ -14,6 +14,7 @@ venv/
 .venv
 env/
 .pytest_cache/
+.vscode/
 
 # Databases
 *.db

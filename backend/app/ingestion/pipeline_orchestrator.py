@@ -304,7 +304,7 @@ def commodity_ingestion_pipeline(date_obj: datetime = None) -> Dict[str, Any]:
     log.info(f"Starting commodity ingestion pipeline for {date_obj.date()}")
     
     # Get all available sources
-    sources = ["AGMARKNET", "USDA", "FAO", "APEDA", "MPEDA", "NCDEX", "MCX"]
+    sources = ["AGMARKNET", "FMPIS", "USDA", "FAO", "APEDA", "MPEDA", "NCDEX", "MCX"]
     
     # Step 1: Fetch data from all sources
     fetch_results = []
@@ -329,6 +329,16 @@ def commodity_ingestion_pipeline(date_obj: datetime = None) -> Dict[str, Any]:
     for normalize_result in normalize_results:
         result = load_to_warehouse_task(normalize_result)
         load_results.append(result)
+    
+    # Step 4.5: Invalidate cache for updated data
+    try:
+        from app.services.cache import get_cache
+        cache = get_cache()
+        if any(r.get("source") == "FMPIS" for r in load_results):
+            cache.invalidate_marine_cache()
+            log.info("Marine cache invalidated after FMPIS data update")
+    except Exception as e:
+        log.warning(f"Cache invalidation failed: {e}")
     
     # Step 5: Trigger forecasts
     forecast_result = trigger_forecasts_task(load_results)

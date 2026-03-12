@@ -2,36 +2,74 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-    Waves, Anchor, Ship, TrendingUp, Download, Filter, MapPin, ExternalLink, ArrowRight, Activity, RefreshCw, X
+    Waves, Anchor, Ship, TrendingUp, Download, Filter, MapPin, ExternalLink, ArrowRight, Activity, RefreshCw, X, Search, Package, ChevronRight, ArrowUpRight
 } from 'lucide-react';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend
 } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
 import { fetchCommodities, fetchPrices } from '@/lib/api';
+import Link from 'next/link';
 
 export default function MarineDashboard() {
     const [commodities, setCommodities] = useState<any[]>([]);
     const [prices, setPrices] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [selectedState, setSelectedState] = useState<string>('All');
+    const [search, setSearch] = useState('');
     const [selectedMarket, setSelectedMarket] = useState<string | null>(null);
+    const [availableStates, setAvailableStates] = useState<string[]>(['All']);
 
     useEffect(() => {
         const loadMarineData = async () => {
             setLoading(true);
             try {
-                const [comms, allPrices] = await Promise.all([
+                // Try the new optimized endpoints first
+                const [comms, marineStates] = await Promise.all([
                     fetchCommodities(),
-                    fetchPrices({})
+                    fetch('http://localhost:8000/api/v1/marine/states').then(r => r.json())
                 ]);
 
                 const marineComms = comms.filter((c: any) => c.category === "Marine Products");
                 setCommodities(marineComms);
-                setPrices(allPrices.filter((p: any) =>
-                    marineComms.some((mc: any) => mc.name === p.commodity_name)
-                ));
+                
+                // Set all available states from the dedicated endpoint
+                setAvailableStates(['All', ...marineStates]);
+                
+                // Try to get marine summary, fallback to regular prices if it fails
+                try {
+                    const marineSummary = await fetch('http://localhost:8000/api/v1/marine/summary').then(r => r.json());
+                    setPrices(marineSummary.map((item: any) => ({
+                        ...item,
+                        commodity_name: item.commodity_name,
+                        state_name: item.state_name,
+                        modal_price: item.modal_price.toString(),
+                        source_name: 'FMPIS'
+                    })));
+                } catch (summaryError) {
+                    console.log("Marine summary failed, using fallback API");
+                    // Fallback to regular prices API
+                    const allPrices = await fetchPrices({ source_name: 'FMPIS' });
+                    setPrices(allPrices);
+                }
+                
             } catch (err) {
                 console.error("Marine data load failed", err);
+                // Complete fallback to regular API
+                const [comms, allPrices] = await Promise.all([
+                    fetchCommodities(),
+                    fetchPrices({ source_name: 'FMPIS' })
+                ]);
+                const marineComms = comms.filter((c: any) => c.category === "Marine Products");
+                setCommodities(marineComms);
+                setPrices(allPrices);
+                
+                // Fallback: ensure we have all 9 marine states
+                const allMarineStates = [
+                    "Andhra Pradesh", "Goa", "Gujarat", "Karnataka", "Kerala", 
+                    "Maharashtra", "Odisha", "Tamil Nadu", "West Bengal"
+                ];
+                setAvailableStates(['All', ...allMarineStates]);
             } finally {
                 setLoading(false);
             }
@@ -39,40 +77,72 @@ export default function MarineDashboard() {
         loadMarineData();
     }, []);
 
-    const speciesAverages = useMemo(() => {
-        const groups: any = {};
-        prices.forEach(p => {
-            if (!groups[p.commodity_name]) groups[p.commodity_name] = { sum: 0, count: 0 };
-            groups[p.commodity_name].sum += parseFloat(p.modal_price);
-            groups[p.commodity_name].count += 1;
+    // Filter commodities based on state and search
+    const filteredCommodities = useMemo(() => {
+        return commodities.filter(c => {
+            const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase());
+            
+            if (selectedState === 'All') {
+                return matchesSearch;
+            }
+            
+            // Check if this commodity has prices in the selected state
+            const hasDataInState = prices.some(p => 
+                p.commodity_name === c.name && p.state_name === selectedState
+            );
+            
+            return matchesSearch && hasDataInState;
         });
+    }, [commodities, selectedState, search, prices]);
 
-        return Object.entries(groups).map(([name, data]: [string, any]) => {
-            const avg = data.sum / data.count;
-            // Mock export price as baseline + 35% margin for arbitrage visualization
+    // Get commodity data with latest prices for display
+    const commodityData = useMemo(() => {
+        return filteredCommodities.map(commodity => {
+            // Get prices for this commodity
+            let commodityPrices = prices.filter(p => p.commodity_name === commodity.name);
+            
+            // Filter by state if not 'All'
+            if (selectedState !== 'All') {
+                commodityPrices = commodityPrices.filter(p => p.state_name === selectedState);
+            }
+            
+            if (commodityPrices.length === 0) {
+                return {
+                    ...commodity,
+                    latestPrice: 0,
+                    priceChange: 0,
+                    marketCount: 0,
+                    stateCount: 0,
+                    lastUpdated: null
+                };
+            }
+            
+            // Calculate statistics
+            const prices_values = commodityPrices.map(p => parseFloat(p.modal_price));
+            const avgPrice = prices_values.reduce((a, b) => a + b, 0) / prices_values.length;
+            const marketCount = new Set(commodityPrices.map(p => p.market_name)).size;
+            const stateCount = new Set(commodityPrices.map(p => p.state_name)).size;
+            
+            // Get latest price (most recent date)
+            const sortedPrices = commodityPrices.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            const latestPrice = sortedPrices[0]?.modal_price || 0;
+            const lastUpdated = sortedPrices[0]?.date;
+            
+            // Calculate price change (mock for now)
+            const priceChange = Math.random() > 0.5 ? Math.random() * 10 : -Math.random() * 10;
+            
             return {
-                name,
-                price: Math.round(avg),
-                exportPrice: Math.round(avg * 1.35)
+                ...commodity,
+                latestPrice: parseFloat(latestPrice),
+                avgPrice: Math.round(avgPrice),
+                priceChange: Math.round(priceChange * 100) / 100,
+                marketCount,
+                stateCount,
+                lastUpdated,
+                recordCount: commodityPrices.length
             };
-        }).sort((a, b) => b.price - a.price);
-    }, [prices]);
-
-    const stats = useMemo(() => {
-        const totalRevenue = prices.reduce((acc, p) => acc + (parseFloat(p.modal_price) * 0.1), 0); // Simplified index
-        return [
-            { label: 'Export Quality Index', value: '4.9/5.0', change: '+0.1', trend: 'up', icon: Activity },
-            { label: 'Active Landing Centers', value: new Set(prices.map(p => p.market_name)).size || '0', change: '+2', trend: 'up', icon: Anchor },
-            { label: 'Est. Revenue Pulse', value: `₹${(totalRevenue / 100).toFixed(1)} Cr`, change: '+8%', trend: 'up', icon: Activity },
-            { label: 'Port Connectivity', value: 'Optimal', change: 'Stable', trend: 'up', icon: Ship },
-        ];
-    }, [prices]);
-
-    const gradeDistribution = [
-        { name: 'Grade A (Export)', value: 65, color: '#4F46E5' },
-        { name: 'Grade B (Premium)', value: 25, color: '#06B6D4' },
-        { name: 'Grade C (Standard)', value: 10, color: '#10B981' },
-    ];
+        });
+    }, [filteredCommodities, prices, selectedState]);
 
     const marketPrices = useMemo(() => {
         if (!selectedMarket) return [];
@@ -83,7 +153,7 @@ export default function MarineDashboard() {
         return (
             <div className="min-h-[60vh] flex flex-col items-center justify-center space-y-4">
                 <RefreshCw className="w-10 h-10 text-brand-primary animate-spin" />
-                <p className="text-sm font-bold text-slate-500 animate-pulse uppercase tracking-widest">Scanning Maritime Landing Data...</p>
+                <p className="text-sm font-bold text-slate-500 animate-pulse uppercase tracking-widest">Loading Marine Intelligence...</p>
             </div>
         );
     }
@@ -149,10 +219,10 @@ export default function MarineDashboard() {
                                                     <span className="text-lg font-black text-brand-primary">
                                                         ₹{Math.round(p.modal_price).toLocaleString()}
                                                     </span>
-                                                    <span className="text-[8px] font-black text-slate-400 uppercase ml-1">/Qtl</span>
+                                                    <span className="text-[8px] font-black text-slate-400 uppercase ml-1">/Kg</span>
                                                 </td>
                                                 <td className="py-5">
-                                                    <p className="font-bold dark:text-slate-300">{p.arrival_quantity} Qtl</p>
+                                                    <p className="font-bold dark:text-slate-300">{p.arrival_quantity} Kg</p>
                                                 </td>
                                                 <td className="py-5 text-xs font-bold text-slate-400 italic">
                                                     {new Date(p.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
@@ -166,6 +236,7 @@ export default function MarineDashboard() {
                     </motion.div>
                 )}
             </AnimatePresence>
+
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
                 <div className="flex items-center space-x-5">
@@ -174,172 +245,123 @@ export default function MarineDashboard() {
                     </div>
                     <div>
                         <h1 className="text-4xl font-bold font-display dark:text-white">Marine Intelligence</h1>
-                        <p className="text-slate-500 font-medium">Tracking landing prices and global export arbitrage for {commodities.length} key species.</p>
+                        <p className="text-slate-500 font-medium">Tracking {commodities.length} marine species across {availableStates.length - 1} coastal states.</p>
                     </div>
                 </div>
                 <div className="flex space-x-3">
-                    <button className="flex items-center space-x-2 px-6 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-bold shadow-sm hover:border-brand-primary transition-all">
-                        <MapPin className="w-4 h-4 text-brand-primary" />
-                        <span>Port Explorer</span>
-                    </button>
+                    <div className="relative">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <input
+                            type="text"
+                            placeholder="Search marine species..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="pl-11 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-brand-primary/20 transition-all w-64"
+                        />
+                    </div>
                     <button className="flex items-center space-x-2 px-6 py-3 bg-brand-primary text-white rounded-xl text-sm font-bold shadow-lg shadow-brand-primary/20 hover:scale-[1.02] transition-all">
                         <Download className="w-4 h-4" />
-                        <span>Export Trade Flows</span>
+                        <span>Export Data</span>
                     </button>
                 </div>
             </div>
 
-            {/* Metrics */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {stats.map((stat, idx) => (
+            {/* State Filter */}
+            <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
+                    <MapPin className="w-4 h-4 text-slate-400" />
+                    <span className="text-sm font-bold text-slate-600 dark:text-slate-400">Filter by State:</span>
+                </div>
+                <div className="flex space-x-2 overflow-x-auto pb-1">
+                    {availableStates.map((state) => (
+                        <button
+                            key={state}
+                            onClick={() => setSelectedState(state)}
+                            className={`px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${selectedState === state
+                                ? 'bg-brand-primary text-white shadow-lg shadow-brand-primary/20'
+                                : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                                }`}
+                        >
+                            {state}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* Marine Commodities Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                {commodityData.map((commodity, idx) => (
                     <motion.div
-                        key={idx}
-                        initial={{ opacity: 0, y: 10 }}
+                        key={commodity.id}
+                        initial={{ opacity: 0, y: 16 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: idx * 0.1 }}
-                        className="glass-card p-6 border-b-2 border-transparent hover:border-brand-primary transition-all"
+                        transition={{ duration: 0.3, delay: idx * 0.04 }}
                     >
-                        <div className="flex justify-between items-start mb-4">
-                            <div className="p-2.5 bg-brand-primary/10 rounded-xl text-brand-primary group-hover:scale-110 transition-transform">
-                                <stat.icon className="w-5 h-5" />
+                        <Link href={`/commodities/${commodity.id}`} className="block">
+                            <div className="glass-card p-6 group cursor-pointer hover:shadow-xl hover:border-brand-primary/20 transition-all duration-300 h-full flex flex-col">
+                                <div className="flex justify-between items-start mb-5">
+                                    <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center text-2xl group-hover:scale-110 transition-transform duration-300">
+                                        🐟
+                                    </div>
+                                    <div className="flex items-center space-x-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-emerald-500/10 text-emerald-500">
+                                        <ArrowUpRight className="w-3 h-3" />
+                                        <span>LIVE</span>
+                                    </div>
+                                </div>
+
+                                <div className="mb-4">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Marine Products</p>
+                                    <h3 className="text-base font-bold dark:text-white leading-tight">{commodity.name}</h3>
+                                </div>
+
+                                <div className="space-y-3 mb-4">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-xs text-slate-500">Latest Price</span>
+                                        <span className="text-lg font-black text-brand-primary">
+                                            ₹{commodity.latestPrice.toLocaleString()}
+                                        </span>
+                                    </div>
+                                    
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-xs text-slate-500">Markets</span>
+                                        <span className="text-sm font-bold dark:text-white">{commodity.marketCount}</span>
+                                    </div>
+                                    
+                                    {selectedState === 'All' && (
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-xs text-slate-500">States</span>
+                                            <span className="text-sm font-bold dark:text-white">{commodity.stateCount}</span>
+                                        </div>
+                                    )}
+                                    
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-xs text-slate-500">Records</span>
+                                        <span className="text-sm font-bold text-slate-400">{commodity.recordCount}</span>
+                                    </div>
+                                </div>
+
+                                <div className="mt-auto pt-5 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                                    <span className="text-xs font-bold text-brand-primary">View Details</span>
+                                    <ChevronRight className="w-4 h-4 text-slate-300 dark:text-slate-600 group-hover:text-brand-primary group-hover:translate-x-0.5 transition-all" />
+                                </div>
                             </div>
-                            <span className="text-[10px] font-black px-2 py-1 bg-emerald-500/10 text-emerald-500 rounded-full uppercase">
-                                {stat.change}
-                            </span>
-                        </div>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">{stat.label}</p>
-                        <h3 className="text-2xl font-bold dark:text-white">{stat.value}</h3>
+                        </Link>
                     </motion.div>
                 ))}
             </div>
 
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-                {/* Species Arbitrage */}
-                <div className="xl:col-span-2 glass-card p-8">
-                    <div className="flex justify-between items-center mb-10">
-                        <div>
-                            <h2 className="text-xl font-bold dark:text-white">Global Species Arbitrage</h2>
-                            <p className="text-sm text-slate-500">Real-time Domestic Landing vs. FOB Export Reference</p>
-                        </div>
-                        <div className="flex items-center space-x-4">
-                            <div className="flex items-center space-x-2">
-                                <div className="w-3 h-3 bg-brand-primary rounded-full" />
-                                <span className="text-[10px] font-bold text-slate-400 uppercase">Landing</span>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <div className="w-3 h-3 bg-cyan-400 rounded-full" />
-                                <span className="text-[10px] font-bold text-slate-400 uppercase">Export</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="h-[400px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={speciesAverages}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" strokeOpacity={0.05} />
-                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748B', fontSize: 10, fontWeight: 700 }} />
-                                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748B', fontSize: 10 }} />
-                                <Tooltip
-                                    cursor={{ fill: 'rgba(79, 70, 229, 0.05)' }}
-                                    contentStyle={{ backgroundColor: '#0f172a', borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)' }}
-                                    itemStyle={{ fontSize: '12px', fontWeight: 'bold' }}
-                                />
-                                <Bar dataKey="price" name="Landing (₹)" fill="#4F46E5" radius={[6, 6, 0, 0]} barSize={24} />
-                                <Bar dataKey="exportPrice" name="Export (₹)" fill="#06B6D4" radius={[6, 6, 0, 0]} barSize={24} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
+            {commodityData.length === 0 && (
+                <div className="text-center py-20 glass-card">
+                    <Waves className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                    <p className="text-slate-500 font-medium">
+                        {search ? 'No marine species matched your search.' : 
+                         selectedState !== 'All' ? `No marine data available for ${selectedState}.` : 
+                         'No marine data available.'}
+                    </p>
                 </div>
-
-                {/* Grade Mix */}
-                <div className="glass-card p-8">
-                    <h2 className="text-xl font-bold dark:text-white mb-2">Species Quality Grade</h2>
-                    <p className="text-sm text-slate-500 mb-10">Aggregate export-readiness across all hubs</p>
-
-                    <div className="h-[280px] relative">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie
-                                    data={gradeDistribution}
-                                    cx="50%"
-                                    cy="50%"
-                                    innerRadius={70}
-                                    outerRadius={95}
-                                    paddingAngle={10}
-                                    dataKey="value"
-                                    stroke="none"
-                                >
-                                    {gradeDistribution.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={entry.color} />
-                                    ))}
-                                </Pie>
-                                <Tooltip />
-                            </PieChart>
-                        </ResponsiveContainer>
-                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                            <span className="text-4xl font-black dark:text-white">90%</span>
-                            <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Market Fit</span>
-                        </div>
-                    </div>
-
-                    <div className="space-y-5 mt-8">
-                        {gradeDistribution.map((g, i) => (
-                            <div key={i} className="flex justify-between items-center bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
-                                <div className="flex items-center space-x-3">
-                                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: g.color }} />
-                                    <span className="text-sm font-bold dark:text-slate-400">{g.name}</span>
-                                </div>
-                                <span className="text-sm font-black dark:text-white">{g.value}%</span>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
-
-            {/* Active Hubs */}
-            <div className="glass-card overflow-hidden">
-                <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                    <div>
-                        <h3 className="text-2xl font-bold dark:text-white">Marine Surveillance Grid</h3>
-                        <p className="text-sm text-slate-500 font-medium">Live landing activity and volume intensity by port center.</p>
-                    </div>
-                    <div className="flex bg-slate-100 dark:bg-slate-900 p-1.5 rounded-xl border border-slate-200 dark:border-slate-800">
-                        <button className="px-5 py-2.5 bg-white dark:bg-slate-800 rounded-lg text-xs font-black shadow-sm text-brand-primary uppercase tracking-wider">All Harbours</button>
-                        <button className="px-5 py-2.5 text-xs font-bold text-slate-500 uppercase tracking-wider hover:text-brand-primary transition-colors">Export Ready</button>
-                    </div>
-                </div>
-
-                <div className="p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {Array.from(new Set(prices.map(p => p.market_name))).slice(0, 6).map((market, i) => (
-                        <div
-                            key={i}
-                            onClick={() => setSelectedMarket(market)}
-                            className="group p-6 glass-card dark:hover:bg-slate-900 border-slate-100 dark:border-slate-800 hover:border-brand-primary/30 transition-all cursor-pointer"
-                        >
-                            <div className="flex justify-between items-start mb-6">
-                                <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-2xl group-hover:bg-brand-primary/10 transition-colors">
-                                    <Anchor className="w-5 h-5 text-slate-400 group-hover:text-brand-primary" />
-                                </div>
-                                <div className="text-right">
-                                    <div className="flex items-center text-[10px] font-black text-emerald-500 uppercase mb-1">
-                                        <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-2 animate-pulse" />
-                                        Live Pulse
-                                    </div>
-                                    <p className="text-xl font-bold dark:text-white">₹{Math.round(Math.random() * 15 + 5)}.2 M</p>
-                                </div>
-                            </div>
-                            <h4 className="text-lg font-bold dark:text-slate-100 mb-2 truncate">{market}</h4>
-                            <p className="text-xs text-slate-500 font-medium mb-6 leading-relaxed">
-                                Prime Hub: {prices.filter(p => p.market_name === market).slice(0, 2).map(p => p.commodity_name).join(', ')}
-                            </p>
-                            <div className="flex items-center justify-between text-brand-primary text-[10px] font-black uppercase tracking-widest pt-4 border-t border-slate-50 dark:border-slate-800">
-                                <span>Drilldown Analytics</span>
-                                <ArrowRight className="w-4 h-4 group-hover:translate-x-2 transition-transform" />
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
+            )}
         </div>
     );
 }
+
+
