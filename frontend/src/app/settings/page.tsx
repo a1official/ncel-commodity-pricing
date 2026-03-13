@@ -24,7 +24,7 @@ import { useUser } from '@/context/UserContext';
 import { triggerIngestion } from '@/lib/api';
 
 export default function SettingsPage() {
-    const { userName, userRole, updateUser } = useUser();
+    const { userName, userRole, isDarkMode, updateUser, toggleDarkMode } = useUser();
     const [activeTab, setActiveTab] = useState('Profile Info');
     const [isSaving, setIsSaving] = useState(false);
     const [isIngesting, setIsIngesting] = useState(false);
@@ -48,10 +48,20 @@ export default function SettingsPage() {
     }, [userName, userRole]);
 
     const [preferences, setPreferences] = useState({
-        themePresence: true,
+        themePresence: isDarkMode,
         highDensityCharts: false,
         autoSync: true
     });
+
+    // Sync preferences with actual dark mode
+    useEffect(() => {
+        setPreferences(prev => ({ ...prev, themePresence: isDarkMode }));
+    }, [isDarkMode]);
+
+    const handleThemeToggle = () => {
+        toggleDarkMode();
+        setPreferences(prev => ({ ...prev, themePresence: !prev.themePresence }));
+    };
 
     const handleSave = () => {
         setIsSaving(true);
@@ -230,7 +240,7 @@ export default function SettingsPage() {
                                                 </div>
                                             </div>
                                             <div
-                                                onClick={() => setPreferences({ ...preferences, themePresence: !preferences.themePresence })}
+                                                onClick={handleThemeToggle}
                                                 className={`w-12 h-6 rounded-full relative cursor-pointer transition-colors ${preferences.themePresence ? 'bg-brand-primary' : 'bg-slate-200 dark:bg-slate-800'}`}
                                             >
                                                 <motion.div

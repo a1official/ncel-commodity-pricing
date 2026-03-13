@@ -248,7 +248,7 @@ export default function Forecasting() {
                                 const comm = commodities.find(c => c.id === parseInt(e.target.value));
                                 setSelectedCommodity(comm);
                             }}
-                            className="appearance-none pl-12 pr-10 py-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-sm font-bold shadow-xl shadow-slate-200/50 dark:shadow-none focus:ring-2 focus:ring-brand-primary outline-none transition-all cursor-pointer min-w-[280px]"
+                            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl pl-12 pr-10 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-brand-primary/20 appearance-none min-w-[280px] cursor-pointer"
                         >
                             {Object.entries(
                                 commodities.reduce((acc: any, curr: any) => {
@@ -473,7 +473,7 @@ export default function Forecasting() {
                             </div>
                             <div>
                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Global Correlation</p>
-                                <p className="text-sm font-bold dark:text-slate-200">{(0.6 + Math.random() * 0.2).toFixed(2)} Strong P-Value</p>
+                                <p className="text-sm font-bold dark:text-slate-200">0.82 Strong P-Value</p>
                             </div>
                         </div>
                         <div className="p-5 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-slate-100 dark:border-slate-800 flex items-center space-x-4">
@@ -482,7 +482,7 @@ export default function Forecasting() {
                             </div>
                             <div>
                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Last Intel Refresh</p>
-                                <p className="text-sm font-bold dark:text-slate-200">{new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} Discovery</p>
+                                <p className="text-sm font-bold dark:text-slate-200">Standard Interval Discovery</p>
                             </div>
                         </div>
                     </div>

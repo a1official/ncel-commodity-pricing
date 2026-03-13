@@ -4,6 +4,7 @@ import "./globals.css";
 import Sidebar from "@/components/Sidebar";
 import TopBar from "@/components/TopBar";
 import { UserProvider } from "@/context/UserContext";
+import ClientOnly from "@/components/ClientOnly";
 import ChatbotWidget from "@/components/ChatbotWidget";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
@@ -32,8 +33,8 @@ export default function RootLayout({
                             </main>
                         </div>
                     </div>
+                    <ChatbotWidget />
                 </UserProvider>
-                <ChatbotWidget />
             </body>
         </html>
     );

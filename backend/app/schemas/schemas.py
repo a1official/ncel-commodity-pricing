@@ -42,6 +42,8 @@ class Market(MarketBase):
     id: int
     lat: Optional[float] = None
     lon: Optional[float] = None
+    state_name: Optional[str] = None
+    district_name: Optional[str] = None
     class Config:
         from_attributes = True
 

@@ -14,6 +14,7 @@ venv/
 .venv
 env/
 .pytest_cache/
+.vscode/
 
 # Databases
 *.db
@@ -32,3 +33,8 @@ frontend/node_modules/
 
 # Allow documentation images
 !docs/*.png
+
+
+.opencode/
+_bmad/
+backend/data/mpeda/

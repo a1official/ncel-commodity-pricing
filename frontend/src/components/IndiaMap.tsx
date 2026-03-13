@@ -93,7 +93,7 @@ export default function IndiaMap({ markets, selectedRegion = "All India", onNode
                                     onClick={() => onNodeClick?.(node)}
                                     onMouseEnter={() => setHovered(node.id)}
                                     onMouseLeave={() => setHovered(null)}
-                                    initial={{ scale: 0 }}
+                                    initial={{ scale: 0, opacity: 0 }}
                                     animate={{
                                         scale: [1, 1.3, 1],
                                         opacity: isDimmed ? 0.4 : 1

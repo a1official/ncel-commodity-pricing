@@ -3,8 +3,17 @@
 import React from 'react';
 import { Search, Bell, Moon, Sun, ChevronDown, Calendar, SearchIcon } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useUser } from '@/context/UserContext';
 
 export default function TopBar() {
+    const { isDarkMode, toggleDarkMode } = useUser();
+    
+    const [mounted, setMounted] = React.useState(false);
+
+    React.useEffect(() => {
+        setMounted(true);
+    }, []);
+
     return (
         <header className="h-20 flex items-center justify-between px-10 sticky top-0 bg-white/50 dark:bg-slate-950/50 backdrop-blur-md z-40 border-b border-slate-200 dark:border-slate-800/60">
             <div className="flex-1 max-w-2xl">
@@ -26,7 +35,7 @@ export default function TopBar() {
                 <div className="flex items-center space-x-2 bg-slate-100 dark:bg-slate-900/60 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800/60 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
                     <Calendar className="w-4 h-4 text-slate-500" />
                     <span className="text-sm font-semibold dark:text-slate-300">
-                        {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        {mounted ? new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '---'}
                     </span>
                     <ChevronDown className="w-3 h-3 text-slate-400" />
                 </div>
@@ -36,8 +45,11 @@ export default function TopBar() {
                         <Bell className="w-5 h-5" />
                         <span className="absolute top-2 right-2 w-2 h-2 bg-brand-primary rounded-full ring-2 ring-white dark:ring-slate-950" />
                     </button>
-                    <button className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-900/60 text-slate-500 hover:text-brand-primary hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
-                        <Moon className="w-5 h-5" />
+                    <button 
+                        onClick={toggleDarkMode}
+                        className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-900/60 text-slate-500 hover:text-brand-primary hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
+                    >
+                        {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
                     </button>
                 </div>
             </div>

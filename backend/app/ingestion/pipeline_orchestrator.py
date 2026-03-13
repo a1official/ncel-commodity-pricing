@@ -304,7 +304,7 @@ def commodity_ingestion_pipeline(date_obj: datetime = None) -> Dict[str, Any]:
     log.info(f"Starting commodity ingestion pipeline for {date_obj.date()}")
     
     # Get all available sources
-    sources = ["AGMARKNET", "USDA", "FAO", "APEDA", "MPEDA", "NCDEX", "MCX"]
+    sources = ["AGMARKNET", "USDA", "FAO", "APEDA", "MPEDA", "NCDEX", "MCX", "FMPIS"]
     
     # Step 1: Fetch data from all sources
     fetch_results = []
@@ -330,7 +330,18 @@ def commodity_ingestion_pipeline(date_obj: datetime = None) -> Dict[str, Any]:
         result = load_to_warehouse_task(normalize_result)
         load_results.append(result)
     
-    # Step 5: Trigger forecasts
+    # Step 5: Invalidate Marine Cache if FMPIS was processed
+    if any(r.get("source") == "FMPIS" and r.get("status") == "success" for r in load_results):
+        try:
+            from app.services.cache import get_cache
+            cache = get_cache()
+            if cache.enabled:
+                cache.invalidate_marine_cache()
+                log.info("Marine cache invalidated after successful FMPIS ingestion")
+        except Exception as e:
+            log.warning(f"Failed to invalidate marine cache: {e}")
+
+    # Step 6: Trigger forecasts
     forecast_result = trigger_forecasts_task(load_results)
     
     # Summary
@@ -380,8 +391,8 @@ def _infer_category(commodity_name: str) -> str:
         return "Spice"
     elif any(fruit in commodity_lower for fruit in ["banana", "grapes", "pineapple", "tomato"]):
         return "Fruit/Vegetable"
-    elif any(marine in commodity_lower for marine in ["shrimp", "mackerel", "tuna", "trout", "fish"]):
-        return "Marine"
+    elif any(marine in commodity_lower for marine in ["shrimp", "mackerel", "tuna", "trout", "fish", "catla", "rohu", "hilsa", "pangas", "tilapia", "mrigal"]):
+        return "Marine Products"
     elif any(other in commodity_lower for other in ["cotton", "sugar", "soybean", "groundnut"]):
         return "Cash Crop"
     else:

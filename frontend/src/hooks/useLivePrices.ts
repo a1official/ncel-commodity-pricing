@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { WS_BASE_URL } from '@/lib/config';
 
 export interface MarketTick {
     symbol: string;
@@ -26,7 +27,7 @@ export function useLiveMarketStream() {
             console.log('Connecting to NCEL Market stream...');
 
             try {
-                socket = new WebSocket('ws://localhost:8000/ws/market-stream');
+                socket = new WebSocket(`${WS_BASE_URL}/ws/market-stream`);
 
                 socket.onopen = () => {
                     if (isStopped) {
