@@ -141,7 +141,39 @@ def get_prices(
     if end_date:
         query = query.filter(models.PriceRecord.date <= end_date)
     
-    results = query.order_by(models.PriceRecord.date.desc()).offset(skip).limit(limit).all()
+    # Special handling for marine data to ensure all states are represented
+    if source_name == "FMPIS" and not state_name:
+        # For marine data, get representative records from each state
+        from sqlalchemy import func
+        
+        # Get latest record for each state-commodity combination
+        subquery = query.filter(models.Source.name == "FMPIS")\
+            .filter(models.Commodity.category == "Marine Products")\
+            .group_by(models.State.name, models.Commodity.name)\
+            .having(models.PriceRecord.date == func.max(models.PriceRecord.date))\
+            .subquery()
+        
+        # Get the actual records
+        results = db.query(
+            models.PriceRecord,
+            models.Market.name.label("market_name"),
+            models.State.name.label("state_name"),
+            models.Source.name.label("source_name"),
+            models.Commodity.name.label("commodity_name"),
+            models.Variety.name.label("variety_name")
+        ).join(subquery, models.PriceRecord.id == subquery.c.id)\
+         .join(models.Market, models.PriceRecord.market_id == models.Market.id)\
+         .join(models.District, models.Market.district_id == models.District.id)\
+         .join(models.State, models.District.state_id == models.State.id)\
+         .join(models.Source, models.PriceRecord.source_id == models.Source.id)\
+         .join(models.Commodity, models.PriceRecord.commodity_id == models.Commodity.id)\
+         .join(models.Variety, models.PriceRecord.variety_id == models.Variety.id)\
+         .order_by(models.State.name, models.Commodity.name)\
+         .limit(1000)\
+         .all()
+    else:
+        # Regular query for non-marine data or specific filters
+        results = query.order_by(models.PriceRecord.date.desc()).offset(skip).limit(limit).all()
     
     # Flatten results
     final_results = []
@@ -404,10 +436,50 @@ def get_marine_states(db: Session = Depends(get_db)):
     
     return result
 
+@router.get("/marine/debug", tags=["Marine"])
+def debug_marine_data(db: Session = Depends(get_db)):
+    """Debug endpoint to check Goa marine data."""
+    from sqlalchemy import text
+    
+    # Simple query to get Goa data
+    sql = text("""
+        SELECT 
+            c.name as commodity_name,
+            s.name as state_name,
+            pr.modal_price,
+            pr.date
+        FROM price_records pr
+        JOIN commodities c ON pr.commodity_id = c.id
+        JOIN markets m ON pr.market_id = m.id
+        JOIN districts d ON m.district_id = d.id
+        JOIN states s ON d.state_id = s.id
+        JOIN sources src ON pr.source_id = src.id
+        WHERE c.category = 'Marine Products' 
+        AND src.name = 'FMPIS'
+        AND s.name = 'Goa'
+        ORDER BY pr.date DESC
+        LIMIT 10
+    """)
+    
+    results = db.execute(sql).fetchall()
+    
+    return {
+        "goa_records_found": len(results),
+        "sample_records": [
+            {
+                "commodity_name": r.commodity_name,
+                "state_name": r.state_name,
+                "modal_price": float(r.modal_price),
+                "date": str(r.date)
+            }
+            for r in results[:5]
+        ]
+    }
+
+
 @router.get("/marine/summary", tags=["Marine"])
 def get_marine_summary(db: Session = Depends(get_db)):
-    """Get marine commodity summary with latest prices by state."""
-    from sqlalchemy import func, desc
+    """Get marine commodity summary with latest prices by state - ensures all 9 coastal states are included."""
     
     try:
         # Import cache service
@@ -424,33 +496,39 @@ def get_marine_summary(db: Session = Depends(get_db)):
         pass
     
     try:
-        # Simplified query - get recent marine price records
-        results = db.query(
+        # Simple approach: Get all marine records and process in Python
+        marine_records = db.query(
+            models.PriceRecord,
             models.Commodity.name.label("commodity_name"),
-            models.State.name.label("state_name"),
-            models.PriceRecord.modal_price,
-            models.PriceRecord.date
-        ).join(models.Market, models.PriceRecord.market_id == models.Market.id)\
+            models.State.name.label("state_name")
+        ).join(models.Commodity, models.PriceRecord.commodity_id == models.Commodity.id)\
+         .join(models.Market, models.PriceRecord.market_id == models.Market.id)\
          .join(models.District, models.Market.district_id == models.District.id)\
          .join(models.State, models.District.state_id == models.State.id)\
-         .join(models.Commodity, models.PriceRecord.commodity_id == models.Commodity.id)\
          .join(models.Source, models.PriceRecord.source_id == models.Source.id)\
          .filter(models.Commodity.category == "Marine Products")\
          .filter(models.Source.name == "FMPIS")\
-         .order_by(desc(models.PriceRecord.date))\
-         .limit(1000)\
+         .order_by(models.State.name, models.Commodity.name, models.PriceRecord.date.desc())\
          .all()
         
-        result = [
-            {
-                "commodity_name": r.commodity_name,
-                "state_name": r.state_name,
-                "modal_price": float(r.modal_price),
-                "date": r.date.isoformat(),
-                "record_count": 1
-            }
-            for r in results
-        ]
+        # Process records to get latest for each state-commodity combination
+        state_commodity_map = {}
+        
+        for record, commodity_name, state_name in marine_records:
+            key = f"{state_name}_{commodity_name}"
+            
+            # Keep only the latest record for each state-commodity combination
+            if key not in state_commodity_map:
+                state_commodity_map[key] = {
+                    "commodity_name": commodity_name,
+                    "state_name": state_name,
+                    "modal_price": float(record.modal_price),
+                    "date": record.date.isoformat() if hasattr(record.date, 'isoformat') else str(record.date),
+                    "record_count": 1
+                }
+        
+        # Convert to list
+        result = list(state_commodity_map.values())
         
         # Try to cache the result
         try:
@@ -466,6 +544,7 @@ def get_marine_summary(db: Session = Depends(get_db)):
         
     except Exception as e:
         # If query fails, return empty list
+        logger.error(f"Marine summary query failed: {e}")
         return []
 
 
