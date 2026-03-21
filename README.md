@@ -1,112 +1,299 @@
 # NCEL Commodity Price Intelligence Platform
 
-A production-grade, scalable platform for tracking agricultural and marine commodity prices across India.
+NCEL is a commodity intelligence platform with a Next.js frontend, a FastAPI backend, and an AWS Lambda ingestion pipeline for agricultural and marine price data.
 
-## 🚀 Key Features
+## Overview
 
-- **AI Voice Assistant**: Native voice-to-voice communication using Groq (STT/Whisper) and Sarvam AI Bulbul (v3 TTS).
-- **Persistent Chat Memory**: Local conversation history using IndexedDB, providing persistence across browser refreshes.
-- **Dynamic Language Support**: Real-time translation and voice output across 7+ regional Indian languages.
-- **Commodity Agnostic**: Onboard new commodities via metadata/connectors without core code changes.
-- **Normalization Engine**: Standardizes units, maps variety aliases using fuzzy matching, and deduplicates markets.
-- **Pluggable Connectors**: Modular architecture for Agmarknet, eNAM, NFDB, and state mandi boards.
-- **Modern Analytics**: Next.js dashboard with historical trends, heatmaps, and arrival vs price analysis.
+The project currently supports:
 
-## 🛠 Tech Stack
+- live commodity and market dashboards
+- a live weather and geospatial page at `/geospatial`
+- multi-source ingestion and normalization
+- DynamoDB-based warehouse storage for Lambda ingestion
+- frontend terminal views that are now wired to backend data instead of hardcoded arrays
 
-- **Backend**: Python 3.11, FastAPI, SQLAlchemy, Groq SDK, Sarvam AI API.
-- **Data Engineering**: RapidFuzz (Normalization), Requests/BS4 (Ingestion).
-- **Frontend**: Next.js 14, Tailwind CSS, Recharts, Framer Motion, IndexedDB.
-- **Deployment**: Docker, Docker Compose.
+## Main Components
 
-## 🏃 Getting Started
+### Frontend
 
-### 1. Environment Variables
-Create a `.env` file in both `root` and `backend/` directories with your API keys:
-```env
-GROQ_API_KEY=your_groq_api_key_here
-SARVAM_API_KEY=your_sarvam_api_key_here
+- Framework: Next.js 14
+- Location: [frontend](frontend)
+- Key pages:
+  - `/analytics/terminal`
+  - `/geospatial`
+  - `/marine`
+  - `/markets`
+
+### Backend
+
+- Framework: FastAPI
+- Location: [backend](backend)
+- Key responsibilities:
+  - API endpoints
+  - analytics summaries
+  - forecasting hooks
+  - ingestion connectors
+  - SQL-backed app services
+
+### Lambda Ingestion
+
+- Location: [backend/lambda_ingestion](backend/lambda_ingestion)
+- Deployment helpers: [backend/lambda_deployment](backend/lambda_deployment)
+- Current Lambda functions:
+  - `get-price`
+  - `update-attributes`
+  - `ncel-orchestrator-ingestion`
+
+## Data Flow
+
+The active ingestion flow is:
+
+1. Source API/site is called
+2. Data is fetched in source-specific format
+3. Records are normalized into the NCEL schema
+4. Normalized rows are written to DynamoDB
+5. Backend and frontend consume the processed data
+
+For scheduled cloud ingestion, the intended flow is:
+
+1. EventBridge triggers `ncel-orchestrator-ingestion`
+2. Orchestrator runs source fetches
+3. Data is normalized
+4. Data is stored in DynamoDB
+
+At the moment, manual Lambda invocation works. EventBridge scheduling still depends on AWS EventBridge permissions in the target account.
+
+## Sources
+
+The ingestion code currently targets these sources:
+
+- AGMARKNET
+- USDA
+- FAO
+- FMPIS
+- MPEDA
+
+### Commodity Coverage
+
+The AGMARKNET connector is currently configured to target:
+
+- Rice
+  - Basmati
+  - non-basmati / common rice aliases
+- Spices
+  - Cumin
+  - Turmeric
+  - Chilli
+- Fruits and vegetables
+  - Grapes
+  - Potato
+  - Banana
+  - Onion
+  - Tomato
+  - Pineapple
+- Millets
+  - Bajra
+  - Jowar
+  - Ragi
+  - Kodo millet
+  - Foxtail millet
+  - Little millet
+  - Proso millet
+  - Barnyard millet
+- Groundnut
+- Maize
+
+Marine coverage comes from:
+
+- FMPIS
+- MPEDA
+
+## Normalized Schema
+
+The Lambda ingestion normalizes records into this business schema:
+
+```text
+state
+district
+market
+commodity
+variety
+date
+min_price
+max_price
+modal_price
+unit
+arrival_quantity
+source
 ```
 
-### 2. Prerequisites
-- Docker & Docker Compose
-- Node.js (for local frontend development)
-- Python 3.11 (for local backend development)
+### DynamoDB Item Shape
 
-### 2. Run with Docker
-```bash
-docker-compose up --build
-```
-This will start:
-- **PostgreSQL**: `localhost:5432`
-- **FastAPI Backend**: `localhost:8000`
-- **Frontend Dashboard**: `localhost:3000` (Add frontend to compose if preferred)
+The DynamoDB warehouse also stores internal index fields:
 
-### 3. Local Development
-
-#### Backend
-```bash
-cd backend
-pip install -r requirements.txt
-uvicorn app.main:app --reload
-```
-
-#### Ingestion Job
-To run a sample ingestion (Agmarknet):
-```bash
-cd backend
-export PYTHONPATH=$PYTHONPATH:.
-python -m app.ingestion.orchestrator
+```text
+pk
+sk
+gsi1pk
+gsi1sk
+execution_id
+source
+date
+state
+district
+market
+commodity
+variety
+unit
+min_price
+max_price
+modal_price
+arrival_quantity
+normalized_price_per_kg
+ingested_at
 ```
 
-#### Frontend
+## Geospatial Page
+
+The `/geospatial` page currently includes:
+
+- satellite basemap
+- live weather data
+- live radar overlay
+- map click lookup
+- area search
+- auto-refresh
+- timestamped updates
+
+Live data providers currently used there:
+
+- Open-Meteo
+- RainViewer
+
+## Terminal Page
+
+The `/analytics/terminal` page has been updated to use backend data instead of hardcoded dashboard arrays.
+
+Backend route used:
+
+- `/api/v1/analytics/terminal-summary`
+
+Current behavior:
+
+- fetches live backend summary data for the selected commodity and aliases
+- falls back gracefully if a selected commodity has no current rows
+
+## Local Development
+
+### Frontend
+
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-## 🚀 Deployment (Render)
+Frontend URL:
 
-This project is prepared for one-click deployment on **Render**.
+- `http://localhost:3000`
 
-### 1. Backend Setup
-- **Service Type**: Web Service
-- **Runtime**: Python
-- **Build Command**: `pip install -r backend/requirements.txt`
-- **Start Command**: `cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT`
-- **Environmental Variables**: 
-  - `GROQ_API_KEY`: Your Groq Key
-  - `SARVAM_API_KEY`: Your Sarvam AI Key
-  - `DATABASE_URL`: (Optional) Your Postgres URL or leave for SQLite.
-  - `CORS_ORIGINS`: Comma-separated list of allowed URLs (e.g., your frontend URL).
+### Backend
 
-### 2. Frontend Setup (Vercel - Recommended)
-- **Framework Preset**: Next.js
-- **Root Directory**: `frontend`
-- **Build Command**: `npm run build`
-- **Install Command**: `npm install --legacy-peer-deps`
-- **Environmental Variables**:
-  - `NEXT_PUBLIC_API_URL`: The URL of your deployed Render backend (e.g., `https://ncel-backend.onrender.com`).
+```bash
+cd backend
+pip install -r requirements.txt
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
 
-### 3. Frontend Setup (Render Alternate)
-- **Service Type**: Web Service
-- **Runtime**: Node
-- **Build Command**: `cd frontend && npm install --legacy-peer-deps && npm run build`
-- **Start Command**: `cd frontend && npm start`
-- **Environmental Variables**:
-  - `NEXT_PUBLIC_API_URL`: The URL of your deployed backend.
+Backend URL:
 
----
+- `http://localhost:8000`
+- docs: `http://localhost:8000/docs`
 
-## 📂 Project Structure
+## Environment Variables
 
-- `/backend`: Core API and services.
-  - `/app/ingestion`: Data collection and standardization logic.
-  - `/app/models`: Database schema definitions.
-  - `/app/services`: Business logic (Normalization, Math).
-- `/frontend`: Next.js dashboard application.
-- `/docker-compose.yml`: Multi-container orchestration.
+### Frontend
 
-## 📄 License
-Production-grade open-source license.
+Use [frontend/.env.local](frontend/.env.local):
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8000
+```
+
+### Backend
+
+Use [backend/.env](backend/.env).
+
+Important keys include:
+
+```env
+DATABASE_URL=sqlite:///./ncel_local.db
+CORS_ORIGINS=http://localhost:3000
+DATA_GOV_API_KEY=...
+USDA_API_KEY=...
+GROQ_API_KEY=...
+SARVAM_API_KEY=...
+```
+
+### Lambda Deployment
+
+Use [backend/lambda_deployment/.env](backend/lambda_deployment/.env) for AWS deployment settings.
+
+## Lambda Deployment Notes
+
+The project includes a ZIP + Layers Lambda deployment path.
+
+Important files:
+
+- [backend/lambda_deployment/deploy.ps1](backend/lambda_deployment/deploy.ps1)
+- [backend/lambda_deployment/configure_schedules.ps1](backend/lambda_deployment/configure_schedules.ps1)
+- [backend/lambda_ingestion/deploy_zip_lambdas.ps1](backend/lambda_ingestion/deploy_zip_lambdas.ps1)
+
+Current AGMARKNET throttling defaults are intentionally conservative:
+
+- `AGMARKNET_PAGE_SIZE=25`
+- `AGMARKNET_MAX_PAGES=2`
+- `AGMARKNET_PAGE_DELAY_SECONDS=2.0`
+- `AGMARKNET_FILTER_DELAY_SECONDS=3.0`
+
+This is to reduce the risk of API blocking.
+
+## Current Status
+
+Working:
+
+- direct AGMARKNET API key validation
+- Lambda fetch and normalize flow
+- Lambda write to DynamoDB
+- latest-only filtering in Lambda fetch flow
+- geospatial weather page
+- terminal page live backend wiring
+
+Partially dependent on AWS account permissions:
+
+- EventBridge schedule creation
+- fully automated scheduled ingestion in AWS
+
+## Repository Structure
+
+```text
+ncel-commodity-pricing/
+|-- backend/
+|   |-- app/
+|   |   |-- api/
+|   |   |-- core/
+|   |   |-- ingestion/
+|   |   |-- models/
+|   |   `-- services/
+|   |-- lambda_deployment/
+|   `-- lambda_ingestion/
+|-- docs/
+`-- frontend/
+    `-- src/
+```
+
+## Notes
+
+- Local app APIs currently use SQL-backed backend models.
+- Lambda ingestion currently writes to DynamoDB.
+- If you want the app UI to read warehouse data directly, add a DynamoDB-backed backend aggregation layer or sync warehouse rows into SQL tables used by the frontend APIs.
