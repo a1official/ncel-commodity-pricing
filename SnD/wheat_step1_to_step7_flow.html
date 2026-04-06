@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wheat S&D Flow: Step 1 to Step 7</title>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, theme: 'default' });
+  </script>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f7fb;
+      --panel: #ffffff;
+      --ink: #122033;
+      --muted: #60708a;
+      --line: #d9e1ec;
+    }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: linear-gradient(180deg, #eef3fb 0%, #f9fbff 100%);
+      color: var(--ink);
+    }
+    .wrap {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 32px 24px 48px;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 24px;
+      box-shadow: 0 18px 40px rgba(20, 40, 80, 0.08);
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 32px;
+      line-height: 1.1;
+    }
+    p {
+      margin: 0 0 20px;
+      color: var(--muted);
+      font-size: 15px;
+    }
+    .mermaid {
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Wheat S&amp;D Flow: Step 1 to Step 7</h1>
+      <p>Framework, supply, demand, balance sheet, drivers, impact scores, and forecast integration.</p>
+      <div class="mermaid">
+flowchart TD
+    S1["Step 1: Define Framework
+    Geography
+    Time Horizon
+    Frequency
+    Crop Year
+    HS Code"] --> S2["Step 2: Build Supply Side"]
+
+    S2 --> T21["wheat_supply_factors.db
+    factor_definitions
+    Supply factor dictionary"]
+    S2 --> T22["wheat_supply_factors.db
+    source_inventory
+    Supply source registry"]
+    S2 --> T23["wheat_supply_factors.db
+    factor_status
+    Source-backed vs proxy status"]
+    S2 --> T24["wheat_supply_factors.db
+    factor_values
+    Annual / point values"]
+    S2 --> T25["wheat_supply_factors.db
+    factor_monthly_values
+    10-year monthly supply panel"]
+
+    T25 --> S3["Step 3: Build Demand Side"]
+
+    S3 --> T31["wheat_demand_monthly.db
+    factor_definitions
+    Demand factor dictionary"]
+    S3 --> T32["wheat_demand_monthly.db
+    source_inventory
+    Demand source registry"]
+    S3 --> T33["wheat_demand_monthly.db
+    factor_status
+    Monthly vs proxy status"]
+    S3 --> T34["wheat_demand_monthly.db
+    factor_monthly_values
+    10-year monthly demand panel"]
+
+    T34 --> S4["Step 4: Calculate Balance Sheet"]
+
+    S4 --> T41["wheat_supply_factors.db
+    wheat_balance_sheet_annual
+    Annual S&D table"]
+    S4 --> T42["wheat_supply_factors.db
+    wheat_balance_sheet_projection
+    Forward S&D projection"]
+
+    S4 --> F41["Formula
+    Ending Stock = Opening Stock + Production + Imports - (Food + Feed + Industrial + Exports)"]
+    S4 --> F42["Formula
+    Stocks-to-Use Ratio = Ending Stock / Total Use x 100"]
+
+    T41 --> S5["Step 5: Identify Price Drivers"]
+
+    S5 --> T51["wheat_price_drivers.db
+    factor_definitions
+    Driver dictionary"]
+    S5 --> T52["wheat_price_drivers.db
+    source_inventory
+    Driver source registry"]
+    S5 --> T53["wheat_price_drivers.db
+    factor_status
+    Driver monthly/proxy status"]
+    S5 --> T54["wheat_price_drivers.db
+    factor_monthly_values
+    10-year monthly driver panel"]
+    S5 --> T55["wheat_price_drivers.db
+    driver_reference
+    Source website + formula + confidence"]
+
+    T54 --> S6["Step 6: Build Driver Impact Scores"]
+
+    S6 --> T61["wheat_price_drivers.db
+    driver_impact_score
+    Monthly composite price-pressure score"]
+    S6 --> T62["wheat_price_drivers.db
+    driver_impact_score_annual
+    Annual driver summary"]
+
+    S6 --> F61["Logic
+    Standardize monthly drivers
+    Apply direction and weight
+    Build bucket scores
+    Build implied price adjustment"]
+
+    T61 --> S7["Step 7: Connect Drivers Into Prediction Logic"]
+
+    S7 --> T71["wheat_model_support.db
+    wheat_training_matrix_daily
+    Extended with driver score columns"]
+
+    T71 --> M1["Retrain Wheat ML Model
+    Driver scores become model features"]
+
+    M1 --> O1["Forecast Output
+    Baseline ML price
+    Driver-aware prediction
+    Monte Carlo anchored to driver-aware forecast"]
+
+    T25 --> F21["Supply Formula
+    Total Availability = Opening Stock + Domestic Production + Imports"]
+    T25 --> F22["Monthly Balance
+    Delta = Total Availability - Total Demand Monthly"]
+    T34 --> F22
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wheat Step 1 To Step 9 Flow</title>
+  <style>
+    :root {
+      --bg: #f4f0e8;
+      --paper: #fffaf1;
+      --ink: #10233a;
+      --muted: #637487;
+      --line: #d9cdb6;
+      --accent: #c96c2d;
+      --accent-2: #14746f;
+      --shadow: 0 24px 60px rgba(16, 35, 58, 0.10);
+      --radius: 26px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(201, 108, 45, 0.12), transparent 28%),
+        radial-gradient(circle at top right, rgba(20, 116, 111, 0.10), transparent 24%),
+        linear-gradient(180deg, #efe8da 0%, var(--bg) 100%);
+    }
+
+    .page {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 40px 20px 80px;
+    }
+
+    .hero {
+      background: rgba(255, 250, 241, 0.82);
+      border: 1px solid rgba(201, 108, 45, 0.16);
+      border-radius: 34px;
+      padding: 32px 32px 26px;
+      box-shadow: var(--shadow);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: auto -30px -30px auto;
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(201, 108, 45, 0.14), transparent 65%);
+    }
+
+    .eyebrow {
+      margin: 0 0 10px;
+      color: var(--accent);
+      font-size: 12px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      font-weight: 700;
+      font-family: "Trebuchet MS", Verdana, sans-serif;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(34px, 5vw, 58px);
+      line-height: 0.95;
+      font-weight: 700;
+    }
+
+    .subtitle {
+      max-width: 680px;
+      margin: 14px 0 0;
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1.6;
+    }
+
+    .flow {
+      position: relative;
+      margin-top: 34px;
+      padding: 10px 0 10px 10px;
+    }
+
+    .flow::before {
+      content: "";
+      position: absolute;
+      left: 33px;
+      top: 40px;
+      bottom: 40px;
+      width: 2px;
+      background:
+        linear-gradient(
+          180deg,
+          rgba(201, 108, 45, 0.10) 0%,
+          rgba(201, 108, 45, 0.60) 18%,
+          rgba(20, 116, 111, 0.60) 82%,
+          rgba(20, 116, 111, 0.10) 100%
+        );
+    }
+
+    .step {
+      position: relative;
+      display: grid;
+      grid-template-columns: 80px 1fr;
+      gap: 18px;
+      align-items: start;
+      margin: 0 0 18px;
+    }
+
+    .marker {
+      position: sticky;
+      top: 24px;
+      z-index: 1;
+      width: 48px;
+      height: 48px;
+      margin: 10px auto 0;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), #e9ad53);
+      color: #fffaf1;
+      display: grid;
+      place-items: center;
+      font-family: "Trebuchet MS", Verdana, sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      box-shadow: 0 10px 20px rgba(201, 108, 45, 0.24);
+      border: 3px solid rgba(255, 250, 241, 0.92);
+    }
+
+    .card {
+      background: rgba(255, 250, 241, 0.92);
+      border: 1px solid rgba(16, 35, 58, 0.08);
+      border-radius: var(--radius);
+      padding: 22px 22px 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .step-head {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .step-title {
+      margin: 0;
+      font-size: 28px;
+      line-height: 1.1;
+    }
+
+    .tag {
+      display: inline-block;
+      border: 1px solid rgba(20, 116, 111, 0.18);
+      color: var(--accent-2);
+      background: rgba(20, 116, 111, 0.08);
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      font-family: "Trebuchet MS", Verdana, sans-serif;
+      font-weight: 700;
+    }
+
+    .desc {
+      margin: 0 0 14px;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.6;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+    }
+
+    .panel {
+      border: 1px solid rgba(16, 35, 58, 0.08);
+      background: rgba(244, 240, 232, 0.82);
+      border-radius: 18px;
+      padding: 14px;
+    }
+
+    .panel h3 {
+      margin: 0 0 8px;
+      font-size: 13px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--accent);
+      font-family: "Trebuchet MS", Verdana, sans-serif;
+    }
+
+    .panel p,
+    .panel ul {
+      margin: 0;
+      color: var(--ink);
+      font-size: 15px;
+      line-height: 1.5;
+    }
+
+    .panel ul {
+      padding-left: 18px;
+    }
+
+    .formula {
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .footer {
+      margin-top: 28px;
+      padding: 20px 24px;
+      background: rgba(16, 35, 58, 0.92);
+      border-radius: 24px;
+      color: #f8f3ea;
+    }
+
+    .footer h2 {
+      margin: 0 0 10px;
+      font-size: 20px;
+    }
+
+    .footer ul {
+      margin: 0;
+      padding-left: 18px;
+      line-height: 1.7;
+    }
+
+    a {
+      color: inherit;
+    }
+
+    @media (max-width: 700px) {
+      .flow::before {
+        left: 25px;
+      }
+
+      .step {
+        grid-template-columns: 60px 1fr;
+      }
+
+      .marker {
+        width: 40px;
+        height: 40px;
+        font-size: 12px;
+      }
+
+      .card {
+        padding: 18px;
+      }
+
+      .step-title {
+        font-size: 24px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <p class="eyebrow">Wheat Architecture</p>
+      <h1>Step 1 to Step 9 Flow</h1>
+      <p class="subtitle">
+        A browser-safe visual flow for the Wheat S&amp;D framework, from the first planning decisions through the
+        final model integration layer.
+      </p>
+    </section>
+
+    <section class="flow" aria-label="Wheat step flow">
+      <article class="step">
+        <div class="marker">01</div>
+        <div class="card">
+          <div class="step-head">
+            <h2 class="step-title">Define Framework</h2>
+            <span class="tag">Foundation</span>
+          </div>
+          <p class="desc">Lock the system design before data loading: geography, horizon, frequency, crop year, and HS code.</p>
+          <div class="grid">
+            <div class="panel">
+              <h3>Scope</h3>
+              <p>India + global context for Wheat.</p>
+            </div>
+            <div class="panel">
+              <h3>Time Design</h3>
+              <p>10 years historical, current season, and forecast horizon.</p>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="step">
+        <div class="marker">02</div>
+        <div class="card">
+          <div class="step-head">
+            <h2 class="step-title">Build Supply Side</h2>
+            <span class="tag">Supply DB</span>
+          </div>
+          <p class="desc">Create the Wheat supply layer with monthlyized acreage, yield, production, stocks, imports, and global production context.</p>
+          <div class="grid">
+            <div class="panel">
+              <h3>Database</h3>
+              <p><code>wheat_supply_factors.db</code></p>
+            </div>
+            <div class="panel">
+              <h3>Main Tables</h3>
+              <p><code>factor_definitions</code>, <code>factor_values</code>, <code>factor_monthly_values</code>, <code>factor_status</code>, <code>wheat_balance_sheet_*</code></p>
+            </div>
+            <div class="panel">
+              <h3>Core Formula</h3>
+              <p class="formula">Total Availability = Opening Stock + Production + Imports</p>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="step">
+        <div class="marker">03</div>
+        <div class="card">
+          <div class="step-head">
+            <h2 class="step-title">Build Demand Side</h2>
+            <span class="tag">Demand DB</span>
+          </div>
+          <p class="desc">Build the Wheat demand layer with food, exports, feed, seed, industrial use, stock build, and supporting demand context.</p>
+          <div class="grid">
+            <div class="panel">
+              <h3>Database</h3>
+              <p><code>wheat_demand_monthly.db</code></p>
+            </div>
+            <div class="panel">
+              <h3>Main Tables</h3>
+              <p><code>factor_definitions</code>, <code>factor_monthly_values</code>, <code>factor_status</code>, <code>source_inventory</code></p>
+            </div>
+            <div class="panel">
+              <h3>Core Formula</h3>
+              <p class="formula">Total Demand = Domestic Consumption + Exports + Feed + Seed + Industrial + Private Stock Build</p>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="step">
+        <div class="marker">04</div>
+        <div class="card">
+          <div class="step-head">
+            <h2 class="step-title">Calculate Balance Sheet</h2>
+            <span class="tag">Step 4</span>
+          </div>
+          <p class="desc">Combine supply and demand into year-level Wheat balance sheets and stocks-to-use reporting.</p>
+          <div class="grid">
+            <div class="panel">
+              <h3>Inputs</h3>
+              <p>Supply DB + Demand DB</p>
+            </div>
+            <div class="panel">
+              <h3>Ending Stock</h3>
+              <p class="formula">Opening Stock + Production + Imports - Total Use</p>
+            </div>
+            <div class="panel">
+              <h3>STU</h3>
+              <p class="formula">Stocks-to-Use = Ending Stock / Total Use × 100</p>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="step">
+        <div class="marker">05</div>
+        <div class="card">
+          <div class="step-head">
+            <h2 class="step-title">Identify Price Drivers</h2>
+            <span class="tag">Drivers DB</span>
+          </div>
+          <p class="desc">Track domestic, global, weather, and policy drivers that move Wheat prices and turn them into monthly driver signals.</p>
+          <div class="grid">
+            <div class="panel">
+              <h3>Database</h3>
+              <p><code>wheat_price_drivers.db</code></p>
+            </div>
+            <div class="panel">
+              <h3>Main Tables</h3>
+              <p><code>factor_monthly_values</code>, <code>driver_reference</code>, <code>driver_impact_score</code>, <code>driver_impact_score_annual</code></p>
+            </div>
+            <div class="panel">
+              <h3>Examples</h3>
+              <p>MSP, procurement, sowing, winter temperature, frost risk, Black Sea corridor, Russian policy.</p>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="step">
+        <div class="marker">06</div>
+        <div class="card">
+          <div class="step-head">
+            <h2 class="step-title">Data Collection Plan</h2>
+            <span class="tag">Source Layer</span>
+          </div>
+          <p class="desc">Load the daily and monthly source stack that feeds prices, arrivals, weather, benchmark pricing, stocks, trade, and support signals.</p>
+          <div class="grid">
+            <div class="panel">
+              <h3>Sources</h3>
+              <ul>
+                <li>AGMARKNET spot prices</li>
+                <li>Open-Meteo weather</li>
+                <li>DFPD stocks and procurement</li>
+                <li>TradeStat imports and exports</li>
+                <li>World Bank global benchmark</li>
+              </ul>
+            </div>
+            <div class="panel">
+              <h3>Role</h3>
+              <p>Feeds the support DB and the training matrix with a consistent Wheat feature layer.</p>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="step">
+        <div class="marker">07</div>
+        <div class="card">
+          <div class="step-head">
+            <h2 class="step-title">Build Scenarios</h2>
+            <span class="tag">Scenarios DB</span>
+          </div>
+          <p class="desc">Convert the base balance sheet and driver context into Bull, Base, and Bear trading ranges.</p>
+          <div class="grid">
+            <div class="panel">
+              <h3>Database</h3>
+              <p><code>wheat_scenarios.db</code></p>
+            </div>
+            <div class="panel">
+              <h3>Main Tables</h3>
+              <p><code>scenario_definitions</code>, <code>scenario_runs</code>, <code>scenario_assumptions</code>, <code>scenario_price_ranges</code></p>
+            </div>
+            <div class="panel">
+              <h3>Logic</h3>
+              <p class="formula">Bull / Base / Bear mapped to price ranges</p>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="step">
+        <div class="marker">08</div>
+        <div class="card">
+          <div class="step-head">
+            <h2 class="step-title">Output Structure</h2>
+            <span class="tag">Reporting DB</span>
+          </div>
+          <p class="desc">Prepare dashboard-ready balance tables, STU series, price correlation, risk flags, and scenario summaries.</p>
+          <div class="grid">
+            <div class="panel">
+              <h3>Database</h3>
+              <p><code>wheat_output_structure.db</code></p>
+            </div>
+            <div class="panel">
+              <h3>Main Tables</h3>
+              <p><code>balance_sheet_output</code>, <code>stocks_to_use_ratio_chart</code>, <code>price_correlation_series</code>, <code>risk_flags</code>, <code>scenario_summary</code></p>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="step">
+        <div class="marker">09</div>
+        <div class="card">
+          <div class="step-head">
+            <h2 class="step-title">Model Integration</h2>
+            <span class="tag">Integration DB</span>
+          </div>
+          <p class="desc">Formalize the active Wheat model, feature lineage, training runs, live forecast snapshot, and output contract.</p>
+          <div class="grid">
+            <div class="panel">
+              <h3>Database</h3>
+              <p><code>wheat_model_integration.db</code></p>
+            </div>
+            <div class="panel">
+              <h3>Main Tables</h3>
+              <p><code>model_registry</code>, <code>feature_source_map</code>, <code>training_runs</code>, <code>forecast_integration_status</code>, <code>api_output_contract</code></p>
+            </div>
+            <div class="panel">
+              <h3>Logic</h3>
+              <p class="formula">Daily Wheat ML model with embedded driver scores</p>
+            </div>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="footer">
+      <h2>Related Files</h2>
+      <ul>
+        <li><a href="D:/ncel2/ncel-commodity-pricing/SnD/blueprint.md">Blueprint</a></li>
+        <li><a href="D:/ncel2/ncel-commodity-pricing/SnD/supply/wheat/wheat_supply_factors.db">Supply DB</a></li>
+        <li><a href="D:/ncel2/ncel-commodity-pricing/SnD/demand/wheat/wheat_demand_monthly.db">Demand DB</a></li>
+        <li><a href="D:/ncel2/ncel-commodity-pricing/SnD/price_drivers/wheat/wheat_price_drivers.db">Price Drivers DB</a></li>
+        <li><a href="D:/ncel2/ncel-commodity-pricing/SnD/scenarios/wheat/wheat_scenarios.db">Scenarios DB</a></li>
+        <li><a href="D:/ncel2/ncel-commodity-pricing/SnD/output/wheat/wheat_output_structure.db">Output DB</a></li>
+        <li><a href="D:/ncel2/ncel-commodity-pricing/SnD/model_integration/wheat/wheat_model_integration.db">Model Integration DB</a></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>
