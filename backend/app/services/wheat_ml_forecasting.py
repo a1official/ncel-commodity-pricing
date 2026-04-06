@@ -39,6 +39,19 @@ WHEAT_DRIVER_FEATURE_COLUMNS = {
     "wheat_driver_policy_score",
     "wheat_driver_price_adjustment_pct",
 }
+MODEL_DROPPED_FEATURE_COLUMNS = {
+    "wheat_export_quantity_monthly",
+    "wheat_import_quantity_monthly",
+    "wheat_export_value_inr_crore_monthly",
+    "wheat_import_value_inr_crore_monthly",
+    "wheat_export_concentration_hhi",
+    "wheat_import_concentration_hhi",
+    "wheat_export_seasonality_share_pct",
+    "wheat_risk_price_volatility_score",
+    "wheat_risk_geopolitical_black_sea_score",
+    "wheat_risk_policy_trade_restriction_score",
+    "wheat_risk_supply_stock_tightness_score",
+}
 
 
 @dataclass
@@ -110,7 +123,12 @@ class WheatFeatureForecaster:
     def _prepare_features(frame: pd.DataFrame, feature_columns: list[str] | None = None) -> pd.DataFrame:
         working = frame.copy()
         working["state"] = working["state"].astype(str)
-        design = pd.get_dummies(working.drop(columns=[column for column in EXCLUDED_COLUMNS if column in working.columns]), columns=["state"])
+        base_columns = [
+            column
+            for column in working.columns
+            if column not in EXCLUDED_COLUMNS and column not in MODEL_DROPPED_FEATURE_COLUMNS
+        ]
+        design = pd.get_dummies(working[base_columns], columns=["state"])
         if feature_columns is None:
             return design
         for column in feature_columns:
