@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
     LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar, Cell
 } from 'recharts';
@@ -9,8 +9,11 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { fetchCommodities, fetchPrices } from '@/lib/api';
+import { fetchCommodities, fetchPriceSummary, fetchPriceTimeseries, fetchPricesPage } from '@/lib/api';
 import { useLiveMarketStream } from '@/hooks/useLivePrices';
+import { markPageLoadEnd, markPageLoadStart, type PageLoadToken } from '@/lib/performance';
+import { useQuery } from '@tanstack/react-query';
+import { queryKeys } from '@/lib/query-keys';
 
 const MetricCard = ({ title, value, change, trend, icon: Icon, delay }: any) => (
     <motion.div
@@ -39,83 +42,84 @@ const MetricCard = ({ title, value, change, trend, icon: Icon, delay }: any) => 
 );
 
 export default function Dashboard() {
-    const [loading, setLoading] = useState(true);
-    const [commodities, setCommodities] = useState<any[]>([]);
-    const [latestPrices, setLatestPrices] = useState<any[]>([]);
-    const [dashboardChartData, setDashboardChartData] = useState<any[]>([]);
-    const [stats, setStats] = useState({
-        index: "₹0.0",
-        volume: "0.0K Tons",
-        markets: "0",
-        alerts: "2"
-    });
-
     const [selectedCommodityId, setSelectedCommodityId] = useState<string>('all');
     const [selectedSource, setSelectedSource] = useState<string>('All Sources');
-    const [volumeChartData, setVolumeChartData] = useState<any[]>([]);
+    const loadTokenRef = useRef<PageLoadToken | null>(null);
 
     const { ticks } = useLiveMarketStream();
 
-    useEffect(() => {
-        async function syncDashboard() {
-            try {
-                setLoading(true);
-                const queryParams: any = {};
-                if (selectedCommodityId !== 'all') queryParams.commodity_id = parseInt(selectedCommodityId);
-                if (selectedSource !== 'All Sources') queryParams.source_name = selectedSource;
-
-                const [comms, prices] = await Promise.all([
-                    fetchCommodities(),
-                    fetchPrices(queryParams)
-                ]);
-
-                setCommodities(comms);
-                setLatestPrices(prices);
-
-                // Aggregate daily prices for the chart
-                const dailyAgg = prices.reduce((acc: any, p: any) => {
-                    const date = p.date;
-                    if (!acc[date]) acc[date] = { time: date, price: 0, volume: 0, count: 0 };
-                    acc[date].price += parseFloat(p.modal_price);
-                    acc[date].volume += parseFloat(p.arrival_quantity);
-                    acc[date].count += 1;
-                    return acc;
-                }, {});
-
-                const chartData = Object.values(dailyAgg)
-                    .map((d: any) => ({
-                        time: new Date(d.time).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }),
-                        price: Math.round(d.price / d.count),
-                        volume: Math.round(d.volume)
-                    }))
-                    .sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
-
-                setDashboardChartData(chartData);
-                setVolumeChartData(chartData);
-
-                // Calculate real stats
-                if (prices.length > 0) {
-                    const avgPrice = prices.reduce((acc: number, p: any) => acc + parseFloat(p.normalized_price_per_kg), 0) / prices.length;
-                    const totalVol = prices.reduce((acc: number, p: any) => acc + parseFloat(p.arrival_quantity), 0);
-                    const uniqueMarkets = new Set(prices.map((p: any) => p.market_id)).size;
-
-                    setStats({
-                        index: `₹${(avgPrice * 100).toFixed(1)}`,
-                        volume: totalVol > 1000 ? `${(totalVol / 1000).toFixed(1)}K Tons` : `${totalVol.toFixed(0)} Tons`,
-                        markets: uniqueMarkets.toString(),
-                        alerts: Math.floor(Math.random() * 5 + 1).toString()
-                    });
-                } else {
-                    setStats({ index: "₹0.0", volume: "0 Tons", markets: "0", alerts: "0" });
-                }
-            } catch (err) {
-                console.error('Dashboard sync failed:', err);
-            } finally {
-                setLoading(false);
-            }
-        }
-        syncDashboard();
+    const priceParams = useMemo(() => {
+        const queryParams: any = {};
+        if (selectedCommodityId !== 'all') queryParams.commodity_id = parseInt(selectedCommodityId, 10);
+        if (selectedSource !== 'All Sources') queryParams.source_name = selectedSource;
+        return queryParams;
     }, [selectedCommodityId, selectedSource]);
+
+    const commoditiesQuery = useQuery({
+        queryKey: queryKeys.commodities,
+        queryFn: ({ signal }) => fetchCommodities({ signal }),
+    });
+
+    const pricesPageParams = useMemo(() => ({ ...priceParams, skip: 0, limit: 180 }), [priceParams]);
+    const pricesPageQuery = useQuery({
+        queryKey: queryKeys.pricesPage(pricesPageParams),
+        queryFn: ({ signal }) => fetchPricesPage(pricesPageParams, { signal }),
+    });
+
+    const priceSummaryQuery = useQuery({
+        queryKey: queryKeys.priceSummary(priceParams),
+        queryFn: ({ signal }) => fetchPriceSummary(priceParams, { signal }),
+    });
+
+    const timeseriesParams = useMemo(() => ({ ...priceParams, days: 180 }), [priceParams]);
+    const priceTimeseriesQuery = useQuery({
+        queryKey: queryKeys.priceTimeseries(timeseriesParams),
+        queryFn: ({ signal }) => fetchPriceTimeseries(timeseriesParams, { signal }),
+    });
+
+    const loading = commoditiesQuery.isLoading || pricesPageQuery.isLoading || priceSummaryQuery.isLoading || priceTimeseriesQuery.isLoading;
+    const commodities = useMemo(() => commoditiesQuery.data ?? [], [commoditiesQuery.data]);
+    const latestPrices = useMemo(() => pricesPageQuery.data?.items ?? [], [pricesPageQuery.data]);
+
+    const dashboardChartData = useMemo(() => {
+        const rows = priceTimeseriesQuery.data?.series ?? [];
+        return rows.map((d: any) => ({
+            rawDate: d.date,
+            time: new Date(d.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }),
+            price: Math.round(d.avg_modal_price ?? 0),
+            volume: Math.round(d.total_arrival_quantity ?? 0)
+        }));
+    }, [priceTimeseriesQuery.data]);
+
+    const volumeChartData = dashboardChartData;
+
+    const stats = useMemo(() => {
+        const summary: any = priceSummaryQuery.data;
+        if (!summary) {
+            return { index: "₹0.0", volume: "0 Tons", markets: "0", alerts: "0" };
+        }
+
+        const avgPricePerKg = Number(summary.latest_avg_price_per_kg ?? summary.avg_price_per_kg ?? 0);
+        const totalVol = Number(summary.total_arrival_quantity ?? 0);
+        const uniqueMarkets = Number(summary.unique_markets ?? 0);
+
+        return {
+            index: `₹${(avgPricePerKg * 100).toFixed(1)}`,
+            volume: totalVol > 1000 ? `${(totalVol / 1000).toFixed(1)}K Tons` : `${totalVol.toFixed(0)} Tons`,
+            markets: uniqueMarkets.toString(),
+            alerts: Math.floor(Math.random() * 5 + 1).toString()
+        };
+    }, [priceSummaryQuery.data]);
+
+    useEffect(() => {
+        if (loading && !loadTokenRef.current) {
+            loadTokenRef.current = markPageLoadStart('dashboard');
+        }
+        if (!loading && loadTokenRef.current) {
+            markPageLoadEnd(loadTokenRef.current);
+            loadTokenRef.current = null;
+        }
+    }, [loading]);
 
     if (loading) {
         return (

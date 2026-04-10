@@ -1,67 +1,84 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, ComposedChart
 } from 'recharts';
 import {
-    ArrowLeft, Download, Filter, Share2, Info, MapPin, Calendar, TrendingUp, Package, Layers, AlertTriangle, Loader2
+    ArrowLeft, Download, Filter, Share2, Info, MapPin, Calendar, TrendingUp, Package, Layers, AlertTriangle, Loader2, Upload, Trash2
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { fetchCommodities, fetchPrices, fetchDailyAverage } from '@/lib/api';
+import { fetchCommodities, fetchPrices, fetchDailyAverage, upsertManualPrice, uploadManualPriceSheet, deleteManualPrice, clearApiResponseCache } from '@/lib/api';
 
 export default function CommodityDetail({ params }: { params: { id: string } }) {
+    const [activeUpdatePanel, setActiveUpdatePanel] = useState<'manual' | 'sheet' | null>(null);
     const [commodity, setCommodity] = useState<any>(null);
     const [prices, setPrices] = useState<any[]>([]);
     const [average, setAverage] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [activeSource, setActiveSource] = useState('All Sources');
+    const [savingManualPrice, setSavingManualPrice] = useState(false);
+    const [manualPriceError, setManualPriceError] = useState<string | null>(null);
+    const [manualPriceSuccess, setManualPriceSuccess] = useState<string | null>(null);
+    const [uploadingSheet, setUploadingSheet] = useState(false);
+    const [sheetUploadError, setSheetUploadError] = useState<string | null>(null);
+    const [sheetUploadSuccess, setSheetUploadSuccess] = useState<string | null>(null);
+    const [sheetFile, setSheetFile] = useState<File | null>(null);
+    const [deletingRecordId, setDeletingRecordId] = useState<string | null>(null);
+    const [manualPriceForm, setManualPriceForm] = useState({
+        date: new Date().toISOString().slice(0, 10),
+        market_id: '',
+        modal_price: '',
+        min_price: '',
+        max_price: '',
+        arrival_quantity: '0',
+        unit: 'QUINTAL',
+    });
 
-    const sources = ['All Sources', 'Agmarknet', 'USDA', 'FAO', 'APEDA', 'MPEDA', 'NCDEX', 'MCX'];
+    const sources = ['All Sources', 'AGMARKNET', 'NCEL', 'USDA', 'FAO', 'APEDA', 'MPEDA', 'NCDEX', 'MCX'];
+
+    const loadData = useCallback(async () => {
+        try {
+            setLoading(true);
+            const [allCommodities, dailyAvg] = await Promise.all([
+                fetchCommodities(),
+                fetchDailyAverage(parseInt(params.id))
+            ]);
+
+            const current = allCommodities.find((c: any) => c.id.toString() === params.id);
+            if (!current) throw new Error('Commodity not found in active registries.');
+
+            setCommodity(current);
+            setAverage(dailyAvg);
+
+            let params_api: any = { commodity_id: parseInt(params.id) };
+
+            if (activeSource === 'FAO') {
+                params_api = { commodity_name: 'Food Price Index' };
+            } else if (activeSource !== 'All Sources') {
+                params_api.source_name = activeSource;
+            }
+
+            const history = await fetchPrices(params_api);
+            setPrices(history);
+        } catch (err) {
+            console.error(err);
+            setError('Failed to retrieve intelligence for this commodity.');
+        } finally {
+            setLoading(false);
+        }
+    }, [activeSource, params.id]);
 
     useEffect(() => {
-        async function loadData() {
-            try {
-                setLoading(true);
-                const [allCommodities, dailyAvg] = await Promise.all([
-                    fetchCommodities(),
-                    fetchDailyAverage(parseInt(params.id))
-                ]);
-
-                const current = allCommodities.find((c: any) => c.id.toString() === params.id);
-                if (!current) throw new Error('Commodity not found in active registries.');
-
-                setCommodity(current);
-                setAverage(dailyAvg);
-
-                let params_api: any = { commodity_id: parseInt(params.id) };
-
-                // Special handling for Global Intelligence sources that use different commodity models
-                if (activeSource === 'FAO') {
-                    params_api = { commodity_name: 'Food Price Index' };
-                } else if (activeSource !== 'All Sources') {
-                    params_api.source_name = activeSource;
-                }
-
-                const history = await fetchPrices(params_api);
-                setPrices(history);
-
-            } catch (err) {
-                console.error(err);
-                setError('Failed to retrieve intelligence for this commodity.');
-            } finally {
-                setLoading(false);
-            }
-        }
         if (params.id && !isNaN(parseInt(params.id))) {
             loadData();
         } else {
             setError('Invalid intelligence identifier.');
             setLoading(false);
         }
-    }, [params.id, activeSource]);
+    }, [params.id, activeSource, loadData]);
 
     // Aggregate data for the chart (Average modal price per day)
     const aggregatedChartData = React.useMemo(() => {
@@ -122,7 +139,119 @@ export default function CommodityDetail({ params }: { params: { id: string } }) 
         alert("Generating Secure Intelligence Link... [Link Copied to Clipboard]");
     };
 
-    const isLive = prices.some(p => p.source_name === 'Agmarknet');
+    const isLive = prices.some(p => String(p.source_name || '').toUpperCase() === 'AGMARKNET');
+
+    const marketOptions = React.useMemo(() => {
+        const seen = new Map();
+        prices.forEach((price) => {
+            if (price.market_id && !seen.has(price.market_id)) {
+                seen.set(price.market_id, {
+                    market_id: String(price.market_id),
+                    market_name: price.market_name,
+                    state_name: price.state_name,
+                    unit: price.unit || 'QUINTAL',
+                });
+            }
+        });
+        return Array.from(seen.values());
+    }, [prices]);
+
+    useEffect(() => {
+        if (!manualPriceForm.market_id && marketOptions.length > 0) {
+            setManualPriceForm((current) => ({
+                ...current,
+                market_id: marketOptions[0].market_id,
+                unit: marketOptions[0].unit || current.unit,
+            }));
+        }
+    }, [marketOptions, manualPriceForm.market_id]);
+
+    const handleManualPriceSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        if (!commodity) return;
+
+        setSavingManualPrice(true);
+        setManualPriceError(null);
+        setManualPriceSuccess(null);
+
+        try {
+            const shouldReloadImmediately = activeSource === 'All Sources' || activeSource === 'NCEL';
+
+            await upsertManualPrice({
+                date: manualPriceForm.date,
+                commodity_id: commodity.id,
+                market_id: parseInt(manualPriceForm.market_id, 10),
+                modal_price: parseFloat(manualPriceForm.modal_price),
+                min_price: manualPriceForm.min_price ? parseFloat(manualPriceForm.min_price) : undefined,
+                max_price: manualPriceForm.max_price ? parseFloat(manualPriceForm.max_price) : undefined,
+                arrival_quantity: manualPriceForm.arrival_quantity ? parseFloat(manualPriceForm.arrival_quantity) : 0,
+                unit: manualPriceForm.unit,
+            });
+
+            clearApiResponseCache();
+            setManualPriceSuccess('NCEL price saved successfully.');
+            setActiveUpdatePanel(null);
+            setActiveSource('All Sources');
+            if (shouldReloadImmediately) {
+                await loadData();
+            }
+        } catch (submitError) {
+            console.error(submitError);
+            setManualPriceError('Failed to save the NCEL price update.');
+        } finally {
+            setSavingManualPrice(false);
+        }
+    };
+
+    const handleSheetUpload = async (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        if (!commodity || !sheetFile) return;
+
+        setUploadingSheet(true);
+        setSheetUploadError(null);
+        setSheetUploadSuccess(null);
+
+        try {
+            const response = await uploadManualPriceSheet(commodity.id, sheetFile);
+            setSheetUploadSuccess(
+                `Sheet processed successfully. Created ${response.created}, updated ${response.updated}, failed ${response.failed}.`,
+            );
+            setSheetFile(null);
+            clearApiResponseCache();
+            setActiveUpdatePanel(null);
+            setActiveSource('All Sources');
+            await loadData();
+        } catch (uploadError) {
+            console.error(uploadError);
+            setSheetUploadError('Failed to upload the NCEL sheet. Please check the file format and try again.');
+        } finally {
+            setUploadingSheet(false);
+        }
+    };
+
+    const handleDeleteManualPrice = async (recordId: string) => {
+        const confirmed = window.confirm('Delete this NCEL manual price record? This cannot be undone.');
+        if (!confirmed) return;
+
+        setDeletingRecordId(recordId);
+        setManualPriceError(null);
+        setManualPriceSuccess(null);
+        setSheetUploadError(null);
+        setSheetUploadSuccess(null);
+
+        try {
+            setPrices((current) => current.filter((record) => record.id !== recordId));
+            await deleteManualPrice(recordId);
+            clearApiResponseCache();
+            await loadData();
+        } catch (deleteError) {
+            console.error(deleteError);
+            setManualPriceError('Failed to delete the NCEL manual price record.');
+            await loadData();
+        } finally {
+            setDeletingRecordId(null);
+        }
+    };
 
     if (loading) {
         return (
@@ -158,6 +287,28 @@ export default function CommodityDetail({ params }: { params: { id: string } }) 
                 </Link>
                 <div className="flex space-x-3">
                     <button
+                        onClick={() => {
+                            setManualPriceError(null);
+                            setManualPriceSuccess(null);
+                            setActiveUpdatePanel((value) => value === 'manual' ? null : 'manual');
+                        }}
+                        className="flex items-center space-x-2 px-5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-200 hover:border-brand-primary hover:text-brand-primary transition-all"
+                    >
+                        <Package className="w-4 h-4" />
+                        <span>Update Manually</span>
+                    </button>
+                    <button
+                        onClick={() => {
+                            setSheetUploadError(null);
+                            setSheetUploadSuccess(null);
+                            setActiveUpdatePanel((value) => value === 'sheet' ? null : 'sheet');
+                        }}
+                        className="flex items-center space-x-2 px-5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-200 hover:border-brand-primary hover:text-brand-primary transition-all"
+                    >
+                        <Upload className="w-4 h-4" />
+                        <span>Update Through Sheet</span>
+                    </button>
+                    <button
                         onClick={handleShare}
                         className="p-2.5 glass-card bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-500 hover:text-brand-primary transition-colors"
                         title="Share Intelligence"
@@ -173,6 +324,203 @@ export default function CommodityDetail({ params }: { params: { id: string } }) 
                     </button>
                 </div>
             </div>
+
+            {activeUpdatePanel === 'manual' && (
+                <div className="glass-card p-6 bg-white dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-6">
+                        <div>
+                            <h3 className="text-lg font-bold dark:text-white">Manual NCEL Price Update</h3>
+                            <p className="text-sm text-slate-500">Save a manual price for this commodity and it will appear with discovery source `NCEL`.</p>
+                        </div>
+                        {manualPriceSuccess && (
+                            <div className="text-sm font-medium text-emerald-600">{manualPriceSuccess}</div>
+                        )}
+                    </div>
+
+                    <form onSubmit={handleManualPriceSubmit} className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                        <label className="space-y-2">
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Date</span>
+                            <input
+                                type="date"
+                                value={manualPriceForm.date}
+                                onChange={(e) => setManualPriceForm((current) => ({ ...current, date: e.target.value }))}
+                                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-brand-primary/20"
+                                required
+                            />
+                        </label>
+
+                        <label className="space-y-2">
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Market</span>
+                            <select
+                                value={manualPriceForm.market_id}
+                                onChange={(e) => {
+                                    const nextMarket = marketOptions.find((option: any) => option.market_id === e.target.value);
+                                    setManualPriceForm((current) => ({
+                                        ...current,
+                                        market_id: e.target.value,
+                                        unit: nextMarket?.unit || current.unit,
+                                    }));
+                                }}
+                                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-brand-primary/20"
+                                required
+                            >
+                                {marketOptions.map((option: any) => (
+                                    <option key={option.market_id} value={option.market_id}>
+                                        {option.market_name} - {option.state_name}
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
+
+                        <label className="space-y-2">
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Modal Price</span>
+                            <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={manualPriceForm.modal_price}
+                                onChange={(e) => setManualPriceForm((current) => ({ ...current, modal_price: e.target.value }))}
+                                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-brand-primary/20"
+                                required
+                            />
+                        </label>
+
+                        <label className="space-y-2">
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Arrival Quantity</span>
+                            <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={manualPriceForm.arrival_quantity}
+                                onChange={(e) => setManualPriceForm((current) => ({ ...current, arrival_quantity: e.target.value }))}
+                                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-brand-primary/20"
+                            />
+                        </label>
+
+                        <label className="space-y-2">
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Min Price</span>
+                            <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={manualPriceForm.min_price}
+                                onChange={(e) => setManualPriceForm((current) => ({ ...current, min_price: e.target.value }))}
+                                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-brand-primary/20"
+                            />
+                        </label>
+
+                        <label className="space-y-2">
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Max Price</span>
+                            <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={manualPriceForm.max_price}
+                                onChange={(e) => setManualPriceForm((current) => ({ ...current, max_price: e.target.value }))}
+                                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-brand-primary/20"
+                            />
+                        </label>
+
+                        <label className="space-y-2">
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Unit</span>
+                            <select
+                                value={manualPriceForm.unit}
+                                onChange={(e) => setManualPriceForm((current) => ({ ...current, unit: e.target.value }))}
+                                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-brand-primary/20"
+                            >
+                                <option value="QUINTAL">QUINTAL</option>
+                                <option value="KG">KG</option>
+                                <option value="MT">MT</option>
+                            </select>
+                        </label>
+
+                        <div className="flex items-end gap-3">
+                            <button
+                                type="submit"
+                                disabled={savingManualPrice || marketOptions.length === 0}
+                                className="px-5 py-3 bg-brand-primary text-white rounded-xl text-sm font-bold shadow-lg shadow-brand-primary/20 hover:bg-brand-primary/90 transition-all disabled:opacity-50"
+                            >
+                                {savingManualPrice ? 'Saving...' : 'Save NCEL Price'}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setActiveUpdatePanel(null)}
+                                className="px-5 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl text-sm font-bold"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+
+                    {marketOptions.length === 0 && (
+                        <p className="mt-4 text-sm text-amber-500">No market options are available for this commodity yet, so a manual NCEL update cannot be attached to a market.</p>
+                    )}
+                    {manualPriceError && (
+                        <p className="mt-4 text-sm text-rose-500">{manualPriceError}</p>
+                    )}
+
+                </div>
+            )}
+
+            {activeUpdatePanel === 'sheet' && (
+                <div className="glass-card p-6 bg-white dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-5">
+                        <div>
+                            <h3 className="text-lg font-bold dark:text-white">Bulk NCEL Sheet Upload</h3>
+                            <p className="text-sm text-slate-500">
+                                Upload a `.csv`, `.xlsx`, or `.xls` file with columns `date`, `modal_price`, and either `market_id` or `market_name`.
+                            </p>
+                        </div>
+                        {sheetUploadSuccess && (
+                            <div className="text-sm font-medium text-emerald-600">{sheetUploadSuccess}</div>
+                        )}
+                    </div>
+
+                    <form onSubmit={handleSheetUpload} className="grid grid-cols-1 lg:grid-cols-[1.5fr_auto_auto] gap-4 items-end">
+                        <label className="space-y-2">
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Upload Sheet</span>
+                            <input
+                                type="file"
+                                accept=".csv,.xlsx,.xls"
+                                onChange={(e) => setSheetFile(e.target.files?.[0] || null)}
+                                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-brand-primary/20 file:mr-4 file:border-0 file:bg-brand-primary/10 file:px-3 file:py-2 file:rounded-lg file:text-brand-primary file:font-semibold"
+                                required
+                            />
+                        </label>
+                        <button
+                            type="submit"
+                            disabled={uploadingSheet || !sheetFile}
+                            className="px-5 py-3 bg-brand-primary text-white rounded-xl text-sm font-bold shadow-lg shadow-brand-primary/20 hover:bg-brand-primary/90 transition-all disabled:opacity-50"
+                        >
+                            {uploadingSheet ? 'Uploading...' : 'Upload NCEL Sheet'}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setActiveUpdatePanel(null)}
+                            className="px-5 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl text-sm font-bold"
+                        >
+                            Cancel
+                        </button>
+                    </form>
+
+                    <div className="mt-4 grid grid-cols-1 xl:grid-cols-2 gap-4 text-sm text-slate-500">
+                        <div className="rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 p-4">
+                            <p className="font-bold text-slate-700 dark:text-slate-200 mb-2">Supported columns</p>
+                            <p>`date`, `modal_price`, `market_id` or `market_name`</p>
+                            <p>`min_price`, `max_price`, `arrival_quantity`, `unit`</p>
+                        </div>
+                        <div className="rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 p-4">
+                            <p className="font-bold text-slate-700 dark:text-slate-200 mb-2">Sample row</p>
+                            <p className="font-mono text-xs break-all">2026-04-09, Azadpur Mandi, 2400, 2350, 2450, 500, QUINTAL</p>
+                            <p className="text-xs mt-2">If you use names, map the second column to `market_name`.</p>
+                        </div>
+                    </div>
+
+                    {sheetUploadError && (
+                        <p className="mt-4 text-sm text-rose-500">{sheetUploadError}</p>
+                    )}
+                </div>
+            )}
 
             {/* Header Info */}
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
@@ -321,6 +669,7 @@ export default function CommodityDetail({ params }: { params: { id: string } }) 
                                 <th className="px-8 py-5 text-right">Max Price</th>
                                 <th className="px-8 py-5 text-right">Discovery Source</th>
                                 <th className="px-8 py-5 text-right">Modal Discovery</th>
+                                <th className="px-8 py-5 text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
@@ -358,10 +707,25 @@ export default function CommodityDetail({ params }: { params: { id: string } }) 
                                     </td>
                                     <td className="px-8 py-4 text-right">
                                         <div className="flex flex-col items-end">
-                                            <span className={`text-[9px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded ${record.source_name === 'Agmarknet' ? 'bg-indigo-500/10 text-indigo-500' : 'bg-slate-500/10 text-slate-500'}`}>
-                                                {record.source_name === 'Agmarknet' ? 'Gov.in API' : 'Hub Seeding'}
+                                            <span className={`text-[9px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded ${String(record.source_name || '').toUpperCase() === 'AGMARKNET' ? 'bg-indigo-500/10 text-indigo-500' : String(record.source_name || '').toUpperCase() === 'NCEL' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-slate-500/10 text-slate-500'}`}>
+                                                {String(record.source_name || '').toUpperCase() === 'AGMARKNET' ? 'Gov.in API' : String(record.source_name || '').toUpperCase() === 'NCEL' ? 'Manual Update' : 'Hub Seeding'}
                                             </span>
                                             <span className="text-[10px] text-slate-400 font-medium">{record.source_name}</span>
+                                            {String(record.source_name || '').toUpperCase() === 'NCEL' && (
+                                                <button
+                                                    type="button"
+                                                    onClick={(event) => {
+                                                        event.preventDefault();
+                                                        event.stopPropagation();
+                                                        handleDeleteManualPrice(record.id);
+                                                    }}
+                                                    disabled={deletingRecordId === record.id}
+                                                    className="mt-2 inline-flex items-center gap-1 rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-[10px] font-bold text-rose-600 transition-colors hover:bg-rose-100 disabled:opacity-50 dark:border-rose-900/40 dark:bg-rose-500/10 dark:text-rose-400"
+                                                >
+                                                    <Trash2 className="w-3 h-3" />
+                                                    <span>{deletingRecordId === record.id ? 'Deleting...' : 'Delete'}</span>
+                                                </button>
+                                            )}
                                         </div>
                                     </td>
                                     <td className="px-8 py-4 text-right">
@@ -369,6 +733,25 @@ export default function CommodityDetail({ params }: { params: { id: string } }) 
                                             <span className="text-sm font-bold dark:text-white">₹{parseFloat(record.modal_price).toFixed(0)}</span>
                                             <div className="w-1.5 h-1.5 rounded-full bg-brand-primary animate-pulse" />
                                         </div>
+                                    </td>
+                                    <td className="px-8 py-4 text-right">
+                                        {String(record.source_name || '').toUpperCase() === 'NCEL' ? (
+                                            <button
+                                                type="button"
+                                                onClick={(event) => {
+                                                    event.preventDefault();
+                                                    event.stopPropagation();
+                                                    handleDeleteManualPrice(record.id);
+                                                }}
+                                                disabled={deletingRecordId === record.id}
+                                                className="inline-flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-[11px] font-bold text-rose-600 transition-colors hover:bg-rose-100 disabled:opacity-50 dark:border-rose-900/40 dark:bg-rose-500/10 dark:text-rose-400"
+                                            >
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                                <span>{deletingRecordId === record.id ? 'Deleting...' : 'Delete'}</span>
+                                            </button>
+                                        ) : (
+                                            <span className="text-[10px] text-slate-400">Locked</span>
+                                        )}
                                     </td>
                                 </tr>
                             ))}

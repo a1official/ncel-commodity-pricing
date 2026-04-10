@@ -42,6 +42,8 @@ class Market(MarketBase):
     id: int
     lat: Optional[float] = None
     lon: Optional[float] = None
+    state_name: Optional[str] = None
+    district_name: Optional[str] = None
     class Config:
         from_attributes = True
 
@@ -77,3 +79,26 @@ class PriceFilter(BaseModel):
     variety_id: Optional[int] = None
     state_id: Optional[int] = None
     market_id: Optional[int] = None
+
+
+class ManualPriceUpdateRequest(BaseModel):
+    date: date_type
+    commodity_id: int
+    market_id: int
+    modal_price: Decimal
+    min_price: Optional[Decimal] = None
+    max_price: Optional[Decimal] = None
+    arrival_quantity: Decimal = Decimal("0")
+    unit: str = "QUINTAL"
+
+
+class ManualPriceUpdateResponse(BaseModel):
+    status: str
+    message: str
+    record: PriceRecord
+
+
+class ManualPriceDeleteResponse(BaseModel):
+    status: str
+    message: str
+    record_id: str

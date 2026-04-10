@@ -5,24 +5,56 @@
 @import 'leaflet/dist/leaflet.css';
 
 :root {
-  --foreground-rgb: 15, 23, 42;
-  --background-rgb: 248, 250, 252;
+  --foreground-rgb: 28, 37, 54;
+  --background-rgb: 244, 239, 229;
+  --app-bg: #f4efe5;
+  --app-fg: #1c2536;
+  --app-bg-gradient:
+    radial-gradient(circle at top left, rgba(245, 158, 11, 0.16), transparent 28%),
+    radial-gradient(circle at 100% 0%, rgba(14, 165, 233, 0.10), transparent 24%),
+    linear-gradient(180deg, #fbf8f1 0%, #f4efe5 52%, #ede4d3 100%);
+  --panel-bg: rgba(255, 251, 245, 0.78);
+  --panel-border: rgba(179, 154, 118, 0.22);
+  --panel-shadow: 0 18px 48px rgba(114, 89, 57, 0.10);
+  --muted-surface: rgba(235, 226, 210, 0.72);
+  --muted-border: rgba(174, 155, 126, 0.24);
+  --text-muted: #6b7280;
+  --text-strong: #1f2937;
 }
 
 .dark {
   --foreground-rgb: 248, 250, 252;
   --background-rgb: 2, 6, 23;
+  --app-bg: #020617;
+  --app-fg: #f8fafc;
+  --app-bg-gradient:
+    radial-gradient(circle at top left, rgba(79, 70, 229, 0.16), transparent 24%),
+    radial-gradient(circle at 100% 0%, rgba(6, 182, 212, 0.12), transparent 20%),
+    linear-gradient(180deg, #020617 0%, #081222 46%, #0f172a 100%);
+  --panel-bg: rgba(15, 23, 42, 0.50);
+  --panel-border: rgba(71, 85, 105, 0.28);
+  --panel-shadow: 0 18px 48px rgba(2, 6, 23, 0.45);
+  --muted-surface: rgba(15, 23, 42, 0.62);
+  --muted-border: rgba(51, 65, 85, 0.36);
+  --text-muted: #94a3b8;
+  --text-strong: #f8fafc;
 }
 
 body {
   color: rgb(var(--foreground-rgb));
   background-color: rgb(var(--background-rgb));
+  background-image: var(--app-bg-gradient);
+  background-attachment: fixed;
   min-height: 100vh;
+  transition: background-color 240ms ease, color 240ms ease;
   @apply selection:bg-brand-primary/30;
 }
 
 .glass-card {
-  @apply bg-white/50 dark:bg-slate-900/40 backdrop-blur-xl border border-white/20 dark:border-slate-800/50 shadow-premium rounded-2xl overflow-hidden transition-all duration-300;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  box-shadow: var(--panel-shadow);
+  @apply backdrop-blur-xl rounded-2xl overflow-hidden transition-all duration-300;
 }
 
 .sidebar-nav-item {
@@ -39,6 +71,24 @@ body {
 
 .chart-shell {
   @apply w-full h-full relative;
+}
+
+.app-shell {
+  background-color: var(--app-bg);
+  color: var(--app-fg);
+}
+
+.themed-surface {
+  background: var(--muted-surface);
+  border: 1px solid var(--muted-border);
+}
+
+.themed-text-muted {
+  color: var(--text-muted);
+}
+
+.themed-text-strong {
+  color: var(--text-strong);
 }
 
 @layer utilities {

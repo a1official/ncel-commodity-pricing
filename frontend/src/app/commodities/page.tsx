@@ -1,68 +1,50 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
     Search,
-    Filter,
-    TrendingUp,
-    TrendingDown,
     Package,
-    Waves,
     ArrowUpRight,
-    ArrowDownRight,
-    MoreHorizontal,
     ChevronRight,
     Loader2,
-    RefreshCw
+    RefreshCw,
+    MapPin,
+    Calendar,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { fetchCommodities, triggerIngestion } from '@/lib/api';
+import { fetchCommoditiesOverview, triggerIngestion } from '@/lib/api';
+import { useQuery } from '@tanstack/react-query';
 
-const categories = ['All', 'Grain', 'Vegetable', 'Spices', 'Marine', 'Oilseeds'];
+const categories = ['All', 'Grain', 'Vegetable', 'Spice', 'Marine', 'Cash Crop', 'Fruit'];
 
 export default function CommoditiesPage() {
-    const [commodities, setCommodities] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
     const [syncing, setSyncing] = useState(false);
-    const [error, setError] = useState<string | null>(null);
     const [activeCategory, setActiveCategory] = useState('All');
     const [search, setSearch] = useState('');
 
-    const loadData = async () => {
-        try {
-            setLoading(true);
-            const data = await fetchCommodities();
-            setCommodities(data);
-        } catch (err) {
-            console.error(err);
-            setError('Failed to connect to the intelligence engine.');
-        } finally {
-            setLoading(false);
-        }
-    };
+    const commoditiesQuery = useQuery({
+        queryKey: ['commodities-overview'],
+        queryFn: ({ signal }) => fetchCommoditiesOverview({ signal }),
+    });
 
-    useEffect(() => {
-        loadData();
-    }, []);
+    const commodities = useMemo(() => commoditiesQuery.data ?? [], [commoditiesQuery.data]);
+    const loading = commoditiesQuery.isLoading;
+    const error = commoditiesQuery.isError ? 'Failed to connect to the intelligence engine.' : null;
 
     const handleSync = async () => {
         try {
             setSyncing(true);
             await triggerIngestion();
             setSyncing(false);
-
-            // Wait for a few seconds for the background task to start before refreshing list
-            setTimeout(() => {
-                loadData();
-            }, 2000);
+            await commoditiesQuery.refetch();
         } catch (err) {
             console.error(err);
             setSyncing(false);
         }
     };
 
-    const filtered = commodities.filter(c => {
+    const filtered = commodities.filter((c: any) => {
         const matchesCategory = activeCategory === 'All' || c.category === activeCategory;
         const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase());
         return matchesCategory && matchesSearch;
@@ -103,7 +85,7 @@ export default function CommoditiesPage() {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
                 <div>
                     <h1 className="text-4xl font-bold font-display dark:text-white">Commodity Universe</h1>
-                    <p className="text-slate-500 font-medium mt-2">Browse {commodities.length} tracked varieties across agricultural and marine sectors.</p>
+                    <p className="text-slate-500 font-medium mt-2">Browse {commodities.length} tracked commodities with the latest Agmarknet market snapshot.</p>
                 </div>
                 <div className="flex space-x-3">
                     <div className="relative">
@@ -143,9 +125,8 @@ export default function CommoditiesPage() {
                 ))}
             </div>
 
-            {/* Commodity Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                {filtered.map((c, idx) => (
+                {filtered.map((c: any, idx: number) => (
                     <motion.div
                         key={c.id}
                         initial={{ opacity: 0, y: 16 }}
@@ -167,6 +148,36 @@ export default function CommoditiesPage() {
                                 <div className="mb-4">
                                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{c.category}</p>
                                     <h3 className="text-base font-bold dark:text-white leading-tight">{c.name}</h3>
+                                </div>
+
+                                <div className="rounded-2xl bg-slate-50 dark:bg-slate-900/70 border border-slate-100 dark:border-slate-800 p-4 space-y-2">
+                                    {c.latest_price ? (
+                                        <>
+                                            <div className="flex items-end justify-between gap-3">
+                                                <div>
+                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Latest Agmarknet</p>
+                                                    <p className="text-lg font-bold dark:text-white">Rs {Number(c.latest_price.modal_price ?? 0).toFixed(0)}</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">{c.latest_price.source_name}</p>
+                                                    <p className="text-xs text-slate-500">{Number(c.latest_price.arrival_quantity ?? 0).toFixed(0)} {c.latest_price.unit ?? ''}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2 text-xs text-slate-500">
+                                                <MapPin className="w-3.5 h-3.5" />
+                                                <span>{c.latest_price.market_name}, {c.latest_price.state_name}</span>
+                                            </div>
+                                            <div className="flex items-center gap-2 text-xs text-slate-500">
+                                                <Calendar className="w-3.5 h-3.5" />
+                                                <span>{c.latest_price.date}</span>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="space-y-1">
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Latest Agmarknet</p>
+                                            <p className="text-sm font-medium text-slate-500">No live Agmarknet snapshot loaded yet.</p>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="mt-auto pt-5 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">

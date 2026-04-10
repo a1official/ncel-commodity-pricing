@@ -5,7 +5,10 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 interface UserContextType {
     userName: string;
     userRole: string;
+    isDarkMode: boolean;
     updateUser: (name: string, role: string) => void;
+    toggleDarkMode: () => void;
+    setDarkMode: (dark: boolean) => void;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -13,14 +16,27 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 export function UserProvider({ children }: { children: React.ReactNode }) {
     const [userName, setUserName] = useState("Akash Raman");
     const [userRole, setUserRole] = useState("Senior Analyst");
+    const [isDarkMode, setIsDarkMode] = useState(true);
 
-    // Load from localStorage on mount
     useEffect(() => {
         const savedName = localStorage.getItem('ncel_user_name');
         const savedRole = localStorage.getItem('ncel_user_role');
+        const savedTheme = localStorage.getItem('ncel_dark_mode');
+        
         if (savedName) setUserName(savedName);
         if (savedRole) setUserRole(savedRole);
+        if (savedTheme !== null) {
+            setIsDarkMode(savedTheme === 'true');
+        } else {
+            setIsDarkMode(window.matchMedia('(prefers-color-scheme: dark)').matches);
+        }
     }, []);
+
+    useEffect(() => {
+        const root = document.documentElement;
+        root.classList.toggle('dark', isDarkMode);
+        root.dataset.theme = isDarkMode ? 'dark' : 'light';
+    }, [isDarkMode]);
 
     const updateUser = (name: string, role: string) => {
         setUserName(name);
@@ -29,8 +45,21 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem('ncel_user_role', role);
     };
 
+    const toggleDarkMode = () => {
+        setIsDarkMode(prev => {
+            const newValue = !prev;
+            localStorage.setItem('ncel_dark_mode', String(newValue));
+            return newValue;
+        });
+    };
+
+    const setDarkMode = (dark: boolean) => {
+        setIsDarkMode(dark);
+        localStorage.setItem('ncel_dark_mode', String(dark));
+    };
+
     return (
-        <UserContext.Provider value={{ userName, userRole, updateUser }}>
+        <UserContext.Provider value={{ userName, userRole, isDarkMode, updateUser, toggleDarkMode, setDarkMode }}>
             {children}
         </UserContext.Provider>
     );

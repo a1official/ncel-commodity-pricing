@@ -7,6 +7,7 @@ import {
     LayoutDashboard,
     Package,
     Map,
+    Satellite,
     BarChart3,
     LineChart,
     Waves,
@@ -22,12 +23,14 @@ const menuItems = [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/' },
     { icon: Package, label: 'Commodities', href: '/commodities' },
     { icon: Map, label: 'Markets / Mandis', href: '/markets' },
+    { icon: Satellite, label: 'Geospatial', href: '/geospatial' },
     { icon: BarChart3, label: 'Analytics', href: '/analytics' },
     { icon: LineChart, label: 'Forecasting', href: '/forecasting' },
     { icon: Waves, label: 'Marine Data', href: '/marine' },
     { icon: FileText, label: 'Reports', href: '/reports' },
     { icon: Bell, label: 'Alerts', href: '/alerts' },
     { icon: Settings, label: 'Settings', href: '/settings' },
+    { icon: BarChart3, label: 'Terminal', href: '/analytics/terminal', highlight: true },
 ];
 
 export default function Sidebar() {
@@ -35,15 +38,17 @@ export default function Sidebar() {
     const { userName, userRole } = useUser();
 
     return (
-        <aside className="shrink-0 h-screen w-72 bg-slate-50 dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800/60 z-50 flex flex-col sticky top-0">
-            <div className="p-8">
-                <div className="flex items-center space-x-3 mb-10">
-                    <div className="w-10 h-10 bg-brand-primary rounded-xl flex items-center justify-center shadow-lg shadow-brand-primary/20">
+        <aside className="sticky top-0 z-50 flex h-screen w-72 shrink-0 flex-col border-r border-[var(--panel-border)] bg-[color:var(--panel-bg)]/95 backdrop-blur-xl transition-colors duration-300">
+            <div className="p-8 pb-5">
+                <div className="flex items-center space-x-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-primary shadow-lg shadow-brand-primary/20">
                         <BarChart3 className="text-white w-6 h-6" />
                     </div>
-                    <span className="font-display text-xl font-bold tracking-tight dark:text-white">NCEL Intelligence</span>
+                    <span className="font-display text-xl font-bold tracking-tight themed-text-strong">NCEL Intelligence</span>
                 </div>
+            </div>
 
+            <div className="flex-1 min-h-0 overflow-y-auto px-6 pb-6 custom-scrollbar">
                 <nav className="space-y-1.5">
                     {menuItems.map((item) => {
                         const isActive = pathname === item.href;
@@ -60,19 +65,19 @@ export default function Sidebar() {
                                         transition={{ type: "spring", stiffness: 300, damping: 30 }}
                                     />
                                 )}
-                                <item.icon className={`w-5 h-5 ${isActive ? 'text-brand-primary dark:text-blue-400' : ''}`} />
-                                <span>{item.label}</span>
+                                <item.icon className={`w-5 h-5 ${isActive ? 'text-brand-primary dark:text-blue-400' : item.highlight ? 'text-amber-400' : ''}`} />
+                                <span className={item.highlight ? 'text-amber-400 font-bold' : ''}>{item.label}</span>
                             </Link>
                         );
                     })}
                 </nav>
             </div>
 
-            <div className="mt-auto p-8 border-t border-slate-200 dark:border-slate-800/60 pb-6">
-                <div className="flex items-center space-x-3 p-3 glass-card bg-slate-100 dark:bg-slate-900/40 rounded-xl mb-6">
+            <div className="p-8 border-t border-[var(--panel-border)] pb-6">
+                <div className="mb-6 flex items-center space-x-3 rounded-xl bg-[color:var(--muted-surface)] p-3 border border-[var(--muted-border)]">
                     <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-brand-primary to-cyan-400 border-2 border-white dark:border-slate-800" />
                     <div className="flex-1 overflow-hidden">
-                        <p className="text-sm font-bold dark:text-white truncate">{userName}</p>
+                        <p className="truncate text-sm font-bold themed-text-strong">{userName}</p>
                         <p className="text-xs text-slate-500 truncate">{userRole}</p>
                     </div>
                 </div>

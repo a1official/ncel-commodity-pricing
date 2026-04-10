@@ -6,6 +6,7 @@ Loads settings from environment variables with sensible defaults.
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List, Optional
 import os
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 
 class Settings(BaseSettings):
@@ -183,10 +184,26 @@ class Settings(BaseSettings):
 
     @property
     def sync_database_url(self) -> str:
-        """Handle Render's 'postgres://' prefix for SQLAlchemy."""
+        """Normalize Postgres URLs for the sync SQLAlchemy engine."""
         url = self.DATABASE_URL
         if url and url.startswith("postgres://"):
             url = url.replace("postgres://", "postgresql://", 1)
+        if url and url.startswith("postgresql://"):
+            split = urlsplit(url)
+            filtered_query = [
+                (key, value)
+                for key, value in parse_qsl(split.query, keep_blank_values=True)
+                if key.lower() not in {"connection_limit", "pool_timeout"}
+            ]
+            url = urlunsplit(
+                (
+                    split.scheme,
+                    split.netloc,
+                    split.path,
+                    urlencode(filtered_query),
+                    split.fragment,
+                )
+            )
         return url
 
 
