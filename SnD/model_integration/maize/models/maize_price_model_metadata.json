@@ -1,0 +1,107 @@
+{
+  "run_at": "2026-04-09T11:38:20.391897Z",
+  "champion_model": "linear",
+  "feature_columns": [
+    "opening_stock",
+    "production",
+    "imports",
+    "total_availability",
+    "total_demand",
+    "delta",
+    "ending_stock_sim",
+    "global_price_proxy_index",
+    "rolling_corr_3m",
+    "rolling_corr_6m",
+    "driver_composite",
+    "driver_domestic",
+    "driver_global",
+    "driver_weather",
+    "driver_policy",
+    "driver_market",
+    "poultry_demand_cycle",
+    "ethanol_signal",
+    "substitution_effect",
+    "retail_price_pressure",
+    "month_num",
+    "month_sin",
+    "month_cos",
+    "price_lag_1",
+    "price_lag_3",
+    "price_lag_6",
+    "delta_lag_1"
+  ],
+  "train_range": [
+    "2016-10-01",
+    "2022-12-01"
+  ],
+  "val_range": [
+    "2023-01-01",
+    "2024-12-01"
+  ],
+  "test_range": [
+    "2025-01-01",
+    "2026-02-01"
+  ],
+  "metrics": {
+    "linear": {
+      "train": {
+        "mae": 0.0,
+        "rmse": 0.0,
+        "mape": 0.0,
+        "directional_accuracy": 100.0
+      },
+      "val": {
+        "mae": 2.935275333333333,
+        "rmse": 4.732474387563074,
+        "mape": 2.7294525009520703,
+        "directional_accuracy": 66.66666666666666
+      },
+      "test": {
+        "mae": 8.847452785714285,
+        "rmse": 11.57794843018288,
+        "mape": 10.200178160696613,
+        "directional_accuracy": 64.28571428571429
+      }
+    },
+    "ridge": {
+      "train": {
+        "mae": 0.0,
+        "rmse": 0.0,
+        "mape": 0.0,
+        "directional_accuracy": 100.0
+      },
+      "val": {
+        "mae": 2.935275333333333,
+        "rmse": 4.732474387563074,
+        "mape": 2.7294525009520703,
+        "directional_accuracy": 66.66666666666666
+      },
+      "test": {
+        "mae": 8.847452785714285,
+        "rmse": 11.57794843018288,
+        "mape": 10.200178160696613,
+        "directional_accuracy": 64.28571428571429
+      }
+    },
+    "rf": {
+      "train": {
+        "mae": 0.0,
+        "rmse": 0.0,
+        "mape": 0.0,
+        "directional_accuracy": 100.0
+      },
+      "val": {
+        "mae": 2.935275333333333,
+        "rmse": 4.732474387563074,
+        "mape": 2.7294525009520703,
+        "directional_accuracy": 66.66666666666666
+      },
+      "test": {
+        "mae": 8.847452785714285,
+        "rmse": 11.57794843018288,
+        "mape": 10.200178160696613,
+        "directional_accuracy": 64.28571428571429
+      }
+    }
+  }
+}

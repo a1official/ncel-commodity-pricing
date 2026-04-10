@@ -1,4 +1,4 @@
-# Wheat Step 1 To Step 9 Flow
+# Wheat Document-Aligned Flow
 
 ```text
 +---------------------------------------------------------------+
@@ -52,7 +52,17 @@
                               |
                               v
 +---------------------------------------------------------------+
-| Step 7: Build Scenarios                                       |
+| Step 7: Bilateral Trade Flow Analysis                         |
+| DB: wheat_trade_flow.db                                       |
+| Tables: bilateral_monthly_flows, trade_corridor_table,        |
+| seasonal_export_chart, competing_supplier_map,                |
+| over_under_index_matrix                                       |
+| Logic: bilateral corridor ranking and export seasonality      |
++---------------------------------------------------------------+
+                              |
+                              v
++---------------------------------------------------------------+
+| Step 8: Build Scenarios                                       |
 | DB: wheat_scenarios.db                                        |
 | Tables: scenario_definitions, scenario_runs,                  |
 | scenario_assumptions, scenario_price_ranges                   |
@@ -61,7 +71,16 @@
                               |
                               v
 +---------------------------------------------------------------+
-| Step 8: Output Structure                                      |
+| Step 9: Risk Register                                         |
+| DB: wheat_risk_register.db                                    |
+| Tables: risk_definitions, risk_model_reference,               |
+| risk_monthly_metrics, risk_register_current, risk_alerts      |
+| Logic: ranked Wheat risk scoring and alerting                 |
++---------------------------------------------------------------+
+                              |
+                              v
++---------------------------------------------------------------+
+| Step 10: Output Structure                                     |
 | DB: wheat_output_structure.db                                 |
 | Tables: balance_sheet_output, STU chart,                      |
 | price_correlation_series, risk_flags, scenario_summary        |
@@ -69,7 +88,7 @@
                               |
                               v
 +---------------------------------------------------------------+
-| Step 9: Model Integration                                     |
+| Step 11: Model Integration                                    |
 | DB: wheat_model_integration.db                                |
 | Tables: model_registry, feature_source_map, training_runs,    |
 | forecast_integration_status, api_output_contract              |
@@ -83,6 +102,8 @@
 - [Supply DB](D:/ncel2/ncel-commodity-pricing/SnD/supply/wheat/wheat_supply_factors.db)
 - [Demand DB](D:/ncel2/ncel-commodity-pricing/SnD/demand/wheat/wheat_demand_monthly.db)
 - [Price Drivers DB](D:/ncel2/ncel-commodity-pricing/SnD/price_drivers/wheat/wheat_price_drivers.db)
+- [Trade Flow DB](D:/ncel2/ncel-commodity-pricing/SnD/trade_flow/wheat/wheat_trade_flow.db)
 - [Scenarios DB](D:/ncel2/ncel-commodity-pricing/SnD/scenarios/wheat/wheat_scenarios.db)
+- [Risk Register DB](D:/ncel2/ncel-commodity-pricing/SnD/risk_register/wheat/wheat_risk_register.db)
 - [Output DB](D:/ncel2/ncel-commodity-pricing/SnD/output/wheat/wheat_output_structure.db)
 - [Model Integration DB](D:/ncel2/ncel-commodity-pricing/SnD/model_integration/wheat/wheat_model_integration.db)

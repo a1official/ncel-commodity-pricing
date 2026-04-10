@@ -1,0 +1,237 @@
+{
+  "run_name": "wheat_snd_sqlite_to_postgres",
+  "tables": {
+    "wheat_demand.factor_definitions": {
+      "schema_name": "wheat_demand",
+      "source_rows": 16,
+      "status": "completed",
+      "table_name": "factor_definitions",
+      "target_rows": 16
+    },
+    "wheat_demand.factor_monthly_values": {
+      "schema_name": "wheat_demand",
+      "source_rows": 1920,
+      "status": "completed",
+      "table_name": "factor_monthly_values",
+      "target_rows": 1920
+    },
+    "wheat_demand.factor_status": {
+      "schema_name": "wheat_demand",
+      "source_rows": 16,
+      "status": "completed",
+      "table_name": "factor_status",
+      "target_rows": 16
+    },
+    "wheat_demand.source_inventory": {
+      "schema_name": "wheat_demand",
+      "source_rows": 7,
+      "status": "completed",
+      "table_name": "source_inventory",
+      "target_rows": 7
+    },
+    "wheat_model_integration.api_output_contract": {
+      "schema_name": "wheat_model_integration",
+      "source_rows": 7,
+      "status": "completed",
+      "table_name": "api_output_contract",
+      "target_rows": 7
+    },
+    "wheat_model_integration.feature_source_map": {
+      "schema_name": "wheat_model_integration",
+      "source_rows": 88,
+      "status": "completed",
+      "table_name": "feature_source_map",
+      "target_rows": 88
+    },
+    "wheat_model_integration.forecast_integration_status": {
+      "schema_name": "wheat_model_integration",
+      "source_rows": 1,
+      "status": "completed",
+      "table_name": "forecast_integration_status",
+      "target_rows": 1
+    },
+    "wheat_model_integration.model_registry": {
+      "schema_name": "wheat_model_integration",
+      "source_rows": 1,
+      "status": "completed",
+      "table_name": "model_registry",
+      "target_rows": 1
+    },
+    "wheat_model_integration.training_runs": {
+      "schema_name": "wheat_model_integration",
+      "source_rows": 1,
+      "status": "completed",
+      "table_name": "training_runs",
+      "target_rows": 1
+    },
+    "wheat_output.balance_sheet_output": {
+      "schema_name": "wheat_output",
+      "source_rows": 13,
+      "status": "completed",
+      "table_name": "balance_sheet_output",
+      "target_rows": 13
+    },
+    "wheat_output.output_blocks": {
+      "schema_name": "wheat_output",
+      "source_rows": 5,
+      "status": "completed",
+      "table_name": "output_blocks",
+      "target_rows": 5
+    },
+    "wheat_output.price_correlation_series": {
+      "schema_name": "wheat_output",
+      "source_rows": 27,
+      "status": "completed",
+      "table_name": "price_correlation_series",
+      "target_rows": 27
+    },
+    "wheat_output.risk_flags": {
+      "schema_name": "wheat_output",
+      "source_rows": 3,
+      "status": "completed",
+      "table_name": "risk_flags",
+      "target_rows": 3
+    },
+    "wheat_output.scenario_summary": {
+      "schema_name": "wheat_output",
+      "source_rows": 3,
+      "status": "completed",
+      "table_name": "scenario_summary",
+      "target_rows": 3
+    },
+    "wheat_output.stocks_to_use_ratio_chart": {
+      "schema_name": "wheat_output",
+      "source_rows": 13,
+      "status": "completed",
+      "table_name": "stocks_to_use_ratio_chart",
+      "target_rows": 13
+    },
+    "wheat_price_drivers.driver_impact_score": {
+      "schema_name": "wheat_price_drivers",
+      "source_rows": 120,
+      "status": "completed",
+      "table_name": "driver_impact_score",
+      "target_rows": 120
+    },
+    "wheat_price_drivers.driver_impact_score_annual": {
+      "schema_name": "wheat_price_drivers",
+      "source_rows": 10,
+      "status": "completed",
+      "table_name": "driver_impact_score_annual",
+      "target_rows": 10
+    },
+    "wheat_price_drivers.driver_reference": {
+      "schema_name": "wheat_price_drivers",
+      "source_rows": 8,
+      "status": "completed",
+      "table_name": "driver_reference",
+      "target_rows": 8
+    },
+    "wheat_price_drivers.factor_definitions": {
+      "schema_name": "wheat_price_drivers",
+      "source_rows": 8,
+      "status": "completed",
+      "table_name": "factor_definitions",
+      "target_rows": 8
+    },
+    "wheat_price_drivers.factor_monthly_values": {
+      "schema_name": "wheat_price_drivers",
+      "source_rows": 960,
+      "status": "completed",
+      "table_name": "factor_monthly_values",
+      "target_rows": 960
+    },
+    "wheat_price_drivers.factor_status": {
+      "schema_name": "wheat_price_drivers",
+      "source_rows": 8,
+      "status": "completed",
+      "table_name": "factor_status",
+      "target_rows": 8
+    },
+    "wheat_price_drivers.source_inventory": {
+      "schema_name": "wheat_price_drivers",
+      "source_rows": 4,
+      "status": "completed",
+      "table_name": "source_inventory",
+      "target_rows": 4
+    },
+    "wheat_scenarios.scenario_assumptions": {
+      "schema_name": "wheat_scenarios",
+      "source_rows": 36,
+      "status": "completed",
+      "table_name": "scenario_assumptions",
+      "target_rows": 36
+    },
+    "wheat_scenarios.scenario_definitions": {
+      "schema_name": "wheat_scenarios",
+      "source_rows": 3,
+      "status": "completed",
+      "table_name": "scenario_definitions",
+      "target_rows": 3
+    },
+    "wheat_scenarios.scenario_price_ranges": {
+      "schema_name": "wheat_scenarios",
+      "source_rows": 3,
+      "status": "completed",
+      "table_name": "scenario_price_ranges",
+      "target_rows": 3
+    },
+    "wheat_scenarios.scenario_runs": {
+      "schema_name": "wheat_scenarios",
+      "source_rows": 1,
+      "status": "completed",
+      "table_name": "scenario_runs",
+      "target_rows": 1
+    },
+    "wheat_supply.factor_definitions": {
+      "schema_name": "wheat_supply",
+      "source_rows": 13,
+      "status": "completed",
+      "table_name": "factor_definitions",
+      "target_rows": 13
+    },
+    "wheat_supply.factor_monthly_values": {
+      "schema_name": "wheat_supply",
+      "source_rows": 3360,
+      "status": "completed",
+      "table_name": "factor_monthly_values",
+      "target_rows": 3360
+    },
+    "wheat_supply.factor_status": {
+      "schema_name": "wheat_supply",
+      "source_rows": 12,
+      "status": "completed",
+      "table_name": "factor_status",
+      "target_rows": 12
+    },
+    "wheat_supply.factor_values": {
+      "schema_name": "wheat_supply",
+      "source_rows": 28,
+      "status": "completed",
+      "table_name": "factor_values",
+      "target_rows": 28
+    },
+    "wheat_supply.source_inventory": {
+      "schema_name": "wheat_supply",
+      "source_rows": 9,
+      "status": "completed",
+      "table_name": "source_inventory",
+      "target_rows": 9
+    },
+    "wheat_supply.wheat_balance_sheet_annual": {
+      "schema_name": "wheat_supply",
+      "source_rows": 10,
+      "status": "completed",
+      "table_name": "wheat_balance_sheet_annual",
+      "target_rows": 10
+    },
+    "wheat_supply.wheat_balance_sheet_projection": {
+      "schema_name": "wheat_supply",
+      "source_rows": 3,
+      "status": "completed",
+      "table_name": "wheat_balance_sheet_projection",
+      "target_rows": 3
+    }
+  },
+  "updated_at": null
+}

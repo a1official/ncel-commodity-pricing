@@ -41,6 +41,71 @@ flowchart TD
 - DB: [wheat_supply_factors.db](D:/ncel2/ncel-commodity-pricing/SnD/supply/wheat/wheat_supply_factors.db)
 - Builder: [build_wheat_supply_store.py](D:/ncel2/ncel-commodity-pricing/SnD/supply/wheat/build_wheat_supply_store.py)
 
+# Step 2 — 6W Commodity Profile
+
+DB:
+
+- [wheat_6w_profile.db](D:/ncel2/ncel-commodity-pricing/SnD/profile/wheat/wheat_6w_profile.db)
+
+Builder:
+
+- [build_wheat_6w_profile.py](D:/ncel2/ncel-commodity-pricing/SnD/profile/wheat/build_wheat_6w_profile.py)
+
+Purpose:
+
+- build the foundational Wheat context layer across the document's six dimensions:
+  - `Where`
+  - `What`
+  - `When`
+  - `How Much`
+  - `Why`
+  - `Whom`
+
+## Step 2 Tables
+
+| Table | Purpose |
+|---|---|
+| `source_inventory` | source register for the profile layer |
+| `commodity_master` | single-commodity Wheat master row |
+| `hs_code_register` | Wheat HS code reference |
+| `crop_year_calendar` | Wheat crop-year and market-stage calendar |
+| `six_w_output` | 6W output table aligned to the document |
+| `national_trend_10y` | 10-year national Wheat area, production, yield, and procurement trend |
+| `state_production_map` | core-state production map and role summary |
+| `harvest_calendar` | state-level harvest / arrivals / procurement calendar |
+| `key_player_register` | key institutions and market actors |
+
+## Step 2 Current Counts
+
+| Table | Rows |
+|---|---:|
+| `source_inventory` | `4` |
+| `commodity_master` | `1` |
+| `hs_code_register` | `1` |
+| `crop_year_calendar` | `6` |
+| `six_w_output` | `6` |
+| `national_trend_10y` | `24` |
+| `state_production_map` | `4` |
+| `harvest_calendar` | `16` |
+| `key_player_register` | `5` |
+
+## Step 2 6W Output
+
+| Dimension | Item Label | Item Value |
+|---|---|---|
+| `Where` | `Core wheat states` | `Punjab; Haryana; Uttar Pradesh; Madhya Pradesh` |
+| `What` | `Grades and varieties` | `Milling wheat; feed wheat; Sharbati wheat; standard FAQ wheat` |
+| `When` | `Season timeline` | `Harvest -> mandi arrivals -> procurement -> port shipment` |
+| `How Much` | `10-year metrics backbone` | `Area (Mha), production (MnT), yield (kg/ha), procurement (LMT)` |
+| `Why` | `Key price drivers` | `MSP linkage; procurement intensity; winter temperature and frost; export policy; Black Sea disruption` |
+| `Whom` | `Key institutions and market actors` | `FCI; state procurement agencies; flour millers; cooperative exporters; private traders` |
+
+## Step 2 Summary
+
+- Step 2 is now implemented for Wheat
+- it uses existing Wheat support data for the national 10-year trend backbone
+- state map, harvest calendar, and key player register are curated to match the document's profile layer
+
 ## Main Monthly Supply Table
 
 Table: `factor_monthly_values`
@@ -79,6 +144,28 @@ Schema:
 | `Total demand monthly` | `demand` | `derived` | `2016-04-01` | `2026-03-01` | `120` | `USDA GAIN 2017, USDA GAIN 2019, USDA GAIN 2021, USDA Grain Circular 2026` | `supply_store_from_domestic_consumption_plus_exports_plus_feed_plus_seed_plus_industrial_plus_private_stock_build` |
 | `Total availability` | `derived` | `derived` | `2016-04-01` | `2026-03-01` | `120` | `derived inside supply store` | `opening_stock_plus_domestic_production_plus_imports` |
 | `Delta` | `derived_balance` | `derived` | `2016-04-01` | `2026-03-01` | `120` | `derived inside supply store` | `total_availability_minus_total_demand_monthly` |
+
+## Step 2 Data Inventory Audit
+
+Note:
+
+- in the table below, `Source` and `Link to source` reflect the earliest stored source row for that series in `factor_monthly_values`
+- some series use a broader source chain across later years, but this table is intentionally row-level and DB-faithful
+
+| Data name | Source | Source type | Monthly Status | Data From | Data To | Rows | Link to source | DB name | Table name | First 10 rows |
+|---|---|---|---|---|---|---:|---|---|---|---|
+| `Acreage (sown area)` | `Economic Survey Statistical Appendix` | `pdf` | `annual_only` | `2016-04-01` | `2026-03-01` | `120` | [source](https://www.indiabudget.gov.in/economicsurvey/doc/Statistical-Appendix-in-English.pdf) | `wheat_supply_factors.db` | `factor_monthly_values` | `2016-04-01=30.8; 2016-05-01=30.8; 2016-06-01=30.8; 2016-07-01=30.8; 2016-08-01=30.8; 2016-09-01=30.8; 2016-10-01=30.8; 2016-11-01=30.8; 2016-12-01=30.8; 2017-01-01=30.8` |
+| `Buffer stock` | `USDA annual wheat balance + interpolation` | `pdf` | `mixed` | `2016-04-01` | `2026-03-01` | `120` | [source](https://apps.fas.usda.gov/psdonline/circulars/grain.pdf) | `wheat_supply_factors.db` | `factor_monthly_values` | `2016-04-01=3.04; 2016-05-01=3.654545; 2016-06-01=4.269091; 2016-07-01=4.883636; 2016-08-01=5.498182; 2016-09-01=6.112727; 2016-10-01=6.727273; 2016-11-01=7.341818; 2016-12-01=7.956364; 2017-01-01=8.570909` |
+| `Delta` | `Derived inside wheat supply store` | `derived/local` | `derived` | `2016-04-01` | `2026-03-01` | `120` | — | `wheat_supply_factors.db` | `factor_monthly_values` | `2016-04-01=40.393426; 2016-05-01=26.630268; 2016-06-01=9.730414; 2016-07-01=3.57335; 2016-08-01=1.187184; 2016-09-01=-0.174908; 2016-10-01=-1.270085; 2016-11-01=-0.971955; 2016-12-01=-0.589514; 2017-01-01=0.280834` |
+| `Domestic production` | `Economic Survey Statistical Appendix` | `pdf` | `annual_only` | `2016-04-01` | `2026-03-01` | `120` | [source](https://www.indiabudget.gov.in/economicsurvey/doc/Statistical-Appendix-in-English.pdf) | `wheat_supply_factors.db` | `factor_monthly_values` | `2016-04-01=45.31; 2016-05-01=30.535; 2016-06-01=12.805; 2016-07-01=5.91; 2016-08-01=2.955; 2016-09-01=0.985; 2016-10-01=0.0; 2016-11-01=0.0; 2016-12-01=0.0; 2017-01-01=0.0` |
+| `Imports` | `USDA GAIN India Grain Voluntary Update (October 2017)` | `pdf` | `available` | `2016-04-01` | `2026-03-01` | `120` | [source](https://gain.fas.usda.gov/Recent%20GAIN%20Publications/India%20Grain%20Voluntary%20Update%20-%20October%202017_New%20Delhi_India_10-3-2017.pdf) | `wheat_supply_factors.db` | `factor_monthly_values` | `2016-04-01=0.47168; 2016-05-01=0.47168; 2016-06-01=0.47168; 2016-07-01=0.5896; 2016-08-01=0.64856; 2016-09-01=0.64856; 2016-10-01=0.53064; 2016-11-01=0.47168; 2016-12-01=0.47168; 2017-01-01=0.35376` |
+| `Major producer crop conditions` | `Curated global crop-condition profile` | `derived/local` | `curated` | `2016-04-01` | `2026-03-01` | `840` | — | `wheat_supply_factors.db` | `factor_monthly_values` | `2016-04-01=40.0; 2016-04-01=42.0; 2016-04-01=50.0; 2016-04-01=58.0; 2016-04-01=57.0; 2016-04-01=54.0; 2016-04-01=52.0; 2016-05-01=44.0; 2016-05-01=48.0; 2016-05-01=56.0` |
+| `Opening stocks` | `USDA annual wheat balance + interpolation` | `pdf` | `mixed` | `2016-04-01` | `2026-03-01` | `120` | [source](https://apps.fas.usda.gov/psdonline/circulars/grain.pdf) | `wheat_supply_factors.db` | `factor_monthly_values` | `2016-04-01=3.04; 2016-05-01=3.654545; 2016-06-01=4.269091; 2016-07-01=4.883636; 2016-08-01=5.498182; 2016-09-01=6.112727; 2016-10-01=6.727273; 2016-11-01=7.341818; 2016-12-01=7.956364; 2017-01-01=8.570909` |
+| `Southern Hemisphere harvest calendar` | `Curated Southern Hemisphere wheat harvest calendar` | `derived/local` | `curated` | `2016-04-01` | `2026-03-01` | `240` | — | `wheat_supply_factors.db` | `factor_monthly_values` | `2016-04-01=10.0; 2016-04-01=10.0; 2016-05-01=5.0; 2016-05-01=5.0; 2016-06-01=5.0; 2016-06-01=5.0; 2016-07-01=5.0; 2016-07-01=5.0; 2016-08-01=10.0; 2016-08-01=10.0` |
+| `Total availability` | `Derived inside wheat supply store` | `derived/local` | `derived` | `2016-04-01` | `2026-03-01` | `120` | — | `wheat_supply_factors.db` | `factor_monthly_values` | `2016-04-01=48.82168; 2016-05-01=34.661225; 2016-06-01=17.545771; 2016-07-01=11.383236; 2016-08-01=9.101742; 2016-09-01=7.746287; 2016-10-01=7.257913; 2016-11-01=7.813498; 2016-12-01=8.428044; 2017-01-01=8.924669` |
+| `Total demand monthly` | `USDA GAIN India Grain Voluntary Update (October 2017)` | `pdf` | `derived` | `2016-04-01` | `2026-03-01` | `120` | [source](https://gain.fas.usda.gov/Recent%20GAIN%20Publications/India%20Grain%20Voluntary%20Update%20-%20October%202017_New%20Delhi_India_10-3-2017.pdf) | `wheat_supply_factors.db` | `factor_monthly_values` | `2016-04-01=8.428254; 2016-05-01=8.030957; 2016-06-01=7.815357; 2016-07-01=7.809886; 2016-08-01=7.914558; 2016-09-01=7.921195; 2016-10-01=8.527998; 2016-11-01=8.785453; 2016-12-01=9.017558; 2017-01-01=8.643835` |
+| `USDA global production by country` | `USDA WASDE March 2026` | `xml` | `partial` | `2016-04-01` | `2026-03-01` | `1200` | [source](https://esmis.nal.usda.gov/sites/default/release-files/795813/wasde0326.xml) | `wheat_supply_factors.db` | `factor_monthly_values` | `2016-04-01=15.85; 2016-04-01=25.96; 2016-04-01=33.41; 2016-04-01=136.59; 2016-04-01=135.38; 2016-04-01=110.55; 2016-04-01=91.5; 2016-04-01=23.0; 2016-04-01=49.1; 2016-04-01=791.53` |
+| `Yield per hectare` | `Economic Survey Statistical Appendix` | `pdf` | `annual_only` | `2016-04-01` | `2026-03-01` | `120` | [source](https://www.indiabudget.gov.in/economicsurvey/doc/Statistical-Appendix-in-English.pdf) | `wheat_supply_factors.db` | `factor_monthly_values` | `2016-04-01=3200.0; 2016-05-01=3200.0; 2016-06-01=3200.0; 2016-07-01=3200.0; 2016-08-01=3200.0; 2016-09-01=3200.0; 2016-10-01=3200.0; 2016-11-01=3200.0; 2016-12-01=3200.0; 2017-01-01=3200.0` |
 
 ## Important Note
 
@@ -332,6 +419,32 @@ Schema:
 | `Stock build by private players` | `not_found_cleanly` | `2016-04-01` | `2026-03-01` | `120` | `USDA GAIN 2017, USDA GAIN 2019, USDA GAIN 2021, USDA Grain Circular 2026` | `carry_change_to_harvest_stock_build_proxy` |
 | `Substitution effect` | `available` | `2016-04-01` | `2026-03-01` | `120` | `Local AGMARKNET monthly mandi price lake` | `relative_price_index_proxy` |
 | `Total demand monthly` | `derived` | `2016-04-01` | `2026-03-01` | `120` | `USDA GAIN 2017, USDA GAIN 2019, USDA GAIN 2021, USDA Grain Circular 2026` | `domestic_consumption_plus_exports_plus_feed_plus_seed_plus_industrial_plus_private_stock_build` |
+
+## Step 3 Data Inventory Audit
+
+Note:
+
+- in the table below, `Source` and `Link to source` reflect the earliest stored source row for that series in `factor_monthly_values`
+- some demand series use later TradeStat, AGMARKNET, World Bank, or curated monthly layers beyond the earliest row shown here
+
+| Data name | Source | Source type | Monthly Status | Data From | Data To | Rows | Link to source | DB name | Table name | First 10 rows |
+|---|---|---|---|---|---|---:|---|---|---|---|
+| `Domestic consumption` | `USDA GAIN India Grain Voluntary Update (October 2017)` | `pdf` | `not_found_cleanly` | `2016-04-01` | `2026-03-01` | `120` | [source](https://gain.fas.usda.gov/Recent%20GAIN%20Publications/India%20Grain%20Voluntary%20Update%20-%20October%202017_New%20Delhi_India_10-3-2017.pdf) | `wheat_demand_monthly.db` | `factor_monthly_values` | `2016-04-01=6.632059; 2016-05-01=6.547033; 2016-06-01=6.547033; 2016-07-01=6.717086; 2016-08-01=6.887138; 2016-09-01=6.972165; 2016-10-01=7.142218; 2016-11-01=7.31227; 2016-12-01=7.652376; 2017-01-01=7.652376` |
+| `Exports` | `USDA GAIN India Grain Voluntary Update (October 2017)` | `pdf` | `available` | `2016-04-01` | `2026-03-01` | `120` | [source](https://gain.fas.usda.gov/Recent%20GAIN%20Publications/India%20Grain%20Voluntary%20Update%20-%20October%202017_New%20Delhi_India_10-3-2017.pdf) | `wheat_demand_monthly.db` | `factor_monthly_values` | `2016-04-01=0.04386; 2016-05-01=0.04386; 2016-06-01=0.04386; 2016-07-01=0.04644; 2016-08-01=0.04644; 2016-09-01=0.04386; 2016-10-01=0.04386; 2016-11-01=0.04386; 2016-12-01=0.04386; 2017-01-01=0.03612` |
+| `Feed use` | `USDA GAIN India Grain Voluntary Update (October 2017)` | `pdf` | `not_found_cleanly` | `2016-04-01` | `2026-03-01` | `120` | [source](https://gain.fas.usda.gov/Recent%20GAIN%20Publications/India%20Grain%20Voluntary%20Update%20-%20October%202017_New%20Delhi_India_10-3-2017.pdf) | `wheat_demand_monthly.db` | `factor_monthly_values` | `2016-04-01=0.3666; 2016-05-01=0.3619; 2016-06-01=0.3619; 2016-07-01=0.3713; 2016-08-01=0.3807; 2016-09-01=0.3854; 2016-10-01=0.3948; 2016-11-01=0.4042; 2016-12-01=0.423; 2017-01-01=0.423` |
+| `Festival / seasonal demand` | `Curated seasonal demand calendar` | `derived/local` | `available` | `2016-04-01` | `2026-03-01` | `120` | — | `wheat_demand_monthly.db` | `factor_monthly_values` | `2016-04-01=98.0; 2016-05-01=97.0; 2016-06-01=97.0; 2016-07-01=98.0; 2016-08-01=100.0; 2016-09-01=102.0; 2016-10-01=106.0; 2016-11-01=108.0; 2016-12-01=105.0; 2017-01-01=103.0` |
+| `Imports` | `USDA GAIN India Grain Voluntary Update (October 2017)` | `pdf` | `available` | `2016-04-01` | `2026-03-01` | `120` | [source](https://gain.fas.usda.gov/Recent%20GAIN%20Publications/India%20Grain%20Voluntary%20Update%20-%20October%202017_New%20Delhi_India_10-3-2017.pdf) | `wheat_demand_monthly.db` | `factor_monthly_values` | `2016-04-01=0.47168; 2016-05-01=0.47168; 2016-06-01=0.47168; 2016-07-01=0.5896; 2016-08-01=0.64856; 2016-09-01=0.64856; 2016-10-01=0.53064; 2016-11-01=0.47168; 2016-12-01=0.47168; 2017-01-01=0.35376` |
+| `Industrial use` | `USDA GAIN India Grain Voluntary Update (October 2017)` | `pdf` | `not_found_cleanly` | `2016-04-01` | `2026-03-01` | `120` | [source](https://gain.fas.usda.gov/Recent%20GAIN%20Publications/India%20Grain%20Voluntary%20Update%20-%20October%202017_New%20Delhi_India_10-3-2017.pdf) | `wheat_demand_monthly.db` | `factor_monthly_values` | `2016-04-01=0.446943; 2016-05-01=0.441213; 2016-06-01=0.441213; 2016-07-01=0.452673; 2016-08-01=0.464133; 2016-09-01=0.469863; 2016-10-01=0.481323; 2016-11-01=0.492783; 2016-12-01=0.515704; 2017-01-01=0.515704` |
+| `Open market sales / government release` | `Curated wheat policy timeline` | `derived/local` | `partially_available` | `2016-04-01` | `2026-03-01` | `120` | — | `wheat_demand_monthly.db` | `factor_monthly_values` | `2016-04-01=0.0; 2016-05-01=0.0; 2016-06-01=0.0; 2016-07-01=0.0; 2016-08-01=0.0; 2016-09-01=0.0; 2016-10-01=0.0; 2016-11-01=0.0; 2016-12-01=0.0; 2017-01-01=0.0` |
+| `PDS / government offtake` | `USDA GAIN India Grain Voluntary Update (October 2017)` | `pdf` | `partially_available` | `2016-04-01` | `2026-03-01` | `120` | [source](https://gain.fas.usda.gov/Recent%20GAIN%20Publications/India%20Grain%20Voluntary%20Update%20-%20October%202017_New%20Delhi_India_10-3-2017.pdf) | `wheat_demand_monthly.db` | `factor_monthly_values` | `2016-04-01=2.387541; 2016-05-01=2.356932; 2016-06-01=2.356932; 2016-07-01=2.418151; 2016-08-01=2.47937; 2016-09-01=2.509979; 2016-10-01=2.571198; 2016-11-01=2.632417; 2016-12-01=2.754855; 2017-01-01=2.754855` |
+| `Policy changes` | `Curated wheat policy timeline` | `derived/local` | `available` | `2016-04-01` | `2026-03-01` | `120` | — | `wheat_demand_monthly.db` | `factor_monthly_values` | `2016-04-01=0.0; 2016-05-01=0.0; 2016-06-01=0.0; 2016-07-01=0.0; 2016-08-01=0.0; 2016-09-01=0.0; 2016-10-01=0.0; 2016-11-01=0.0; 2016-12-01=0.0; 2017-01-01=0.0` |
+| `Population / consumption trend` | `World Bank population API` | `api` | `annual_only` | `2016-04-01` | `2026-03-01` | `120` | [source](https://api.worldbank.org/v2/country/IND/indicator/SP.POP.TOTL?format=json&per_page=100) | `wheat_demand_monthly.db` | `factor_monthly_values` | `2016-04-01=1347.872572; 2016-05-01=1349.181997; 2016-06-01=1350.491423; 2016-07-01=1351.800848; 2016-08-01=1353.110273; 2016-09-01=1354.419699; 2016-10-01=1355.729124; 2016-11-01=1357.038549; 2016-12-01=1358.347975; 2017-01-01=1359.6574` |
+| `Stock build by private players` | `USDA GAIN India Grain Voluntary Update (October 2017)` | `pdf` | `not_found_cleanly` | `2016-04-01` | `2026-03-01` | `120` | [source](https://gain.fas.usda.gov/Recent%20GAIN%20Publications/India%20Grain%20Voluntary%20Update%20-%20October%202017_New%20Delhi_India_10-3-2017.pdf) | `wheat_demand_monthly.db` | `factor_monthly_values` | `2016-04-01=0.90552; 2016-05-01=0.60368; 2016-06-01=0.38808; 2016-07-01=0.17248; 2016-08-01=0.08624; 2016-09-01=0.0; 2016-10-01=0.0; 2016-11-01=0.0; 2016-12-01=0.0; 2017-01-01=0.0` |
+| `Private trade demand` | `USDA GAIN India Grain Voluntary Update (October 2017)` | `pdf` | `not_found_cleanly` | `2016-04-01` | `2026-03-01` | `120` | [source](https://gain.fas.usda.gov/Recent%20GAIN%20Publications/India%20Grain%20Voluntary%20Update%20-%20October%202017_New%20Delhi_India_10-3-2017.pdf) | `wheat_demand_monthly.db` | `factor_monthly_values` | `2016-04-01=4.244518; 2016-05-01=4.190101; 2016-06-01=4.190101; 2016-07-01=4.298935; 2016-08-01=4.407769; 2016-09-01=4.462185; 2016-10-01=4.571019; 2016-11-01=4.679853; 2016-12-01=4.897521; 2017-01-01=4.897521` |
+| `Retail price / CPI wheat pressure` | `Local AGMARKNET monthly mandi price lake` | `derived/local` | `available` | `2016-04-01` | `2026-03-01` | `120` | — | `wheat_demand_monthly.db` | `factor_monthly_values` | `2016-04-01=100.0; 2016-05-01=100.0; 2016-06-01=100.0; 2016-07-01=100.0; 2016-08-01=100.0; 2016-09-01=100.0; 2016-10-01=100.0; 2016-11-01=100.0; 2016-12-01=100.0; 2017-01-01=100.0` |
+| `Seed use` | `USDA GAIN India Grain Voluntary Update (October 2017)` | `pdf` | `not_found_cleanly` | `2016-04-01` | `2026-03-01` | `120` | [source](https://gain.fas.usda.gov/Recent%20GAIN%20Publications/India%20Grain%20Voluntary%20Update%20-%20October%202017_New%20Delhi_India_10-3-2017.pdf) | `wheat_demand_monthly.db` | `factor_monthly_values` | `2016-04-01=0.033271; 2016-05-01=0.033271; 2016-06-01=0.033271; 2016-07-01=0.049907; 2016-08-01=0.049907; 2016-09-01=0.049907; 2016-10-01=0.465797; 2016-11-01=0.532339; 2016-12-01=0.382619; 2017-01-01=0.016636` |
+| `Substitution effect` | `Local AGMARKNET monthly mandi price lake` | `derived/local` | `available` | `2016-04-01` | `2026-03-01` | `120` | — | `wheat_demand_monthly.db` | `factor_monthly_values` | `2016-04-01=100.0; 2016-05-01=100.0; 2016-06-01=100.0; 2016-07-01=100.0; 2016-08-01=100.0; 2016-09-01=100.0; 2016-10-01=100.0; 2016-11-01=100.0; 2016-12-01=100.0; 2017-01-01=100.0` |
+| `Total demand monthly` | `USDA GAIN India Grain Voluntary Update (October 2017)` | `pdf` | `derived` | `2016-04-01` | `2026-03-01` | `120` | [source](https://gain.fas.usda.gov/Recent%20GAIN%20Publications/India%20Grain%20Voluntary%20Update%20-%20October%202017_New%20Delhi_India_10-3-2017.pdf) | `wheat_demand_monthly.db` | `factor_monthly_values` | `2016-04-01=8.428254; 2016-05-01=8.030957; 2016-06-01=7.815357; 2016-07-01=7.809886; 2016-08-01=7.914558; 2016-09-01=7.921195; 2016-10-01=8.527998; 2016-11-01=8.785453; 2016-12-01=9.017558; 2017-01-01=8.643835` |
 
 ## Demand Supporting Metadata Tables
 
@@ -877,6 +990,172 @@ What is not in this stack:
 - a full direct licensed daily `CBOT / Reuters` feed
 
 For the Wheat S&D and forecasting stack in this repo, Step 6 is complete enough and treated as loaded.
+
+# Document Step 7 - Bilateral Trade Flow Analysis
+
+This section captures the document-aligned bilateral trade flow layer for Wheat.
+
+## Step 7 overview
+
+| Item | Value |
+|---|---|
+| Step | `Document Step 7 - Bilateral Trade Flow Analysis` |
+| Purpose | build bilateral Wheat export/import flow analysis for corridor ranking, seasonality, and competing-supplier context |
+| DB | [wheat_trade_flow.db](D:/ncel2/ncel-commodity-pricing/SnD/trade_flow/wheat/wheat_trade_flow.db) |
+| Builder | [build_wheat_trade_flow.py](D:/ncel2/ncel-commodity-pricing/SnD/trade_flow/wheat/build_wheat_trade_flow.py) |
+| Coverage | `2018-01-01` to `2026-01-01` |
+| Primary source | `DGCI&S TradeStat` |
+| HS code | `1001` |
+
+## Step 7 tables created
+
+| Table | Purpose |
+|---|---|
+| `source_inventory` | official source registry for the trade-flow layer |
+| `bilateral_monthly_flows` | monthly Wheat exports/imports by partner country |
+| `trade_corridor_table` | ranked corridor summary with latest year, 5-year average, and CAGR |
+| `over_under_index_matrix` | India corridor-share matrix for over/under-index analysis |
+| `seasonal_export_chart` | chart-ready monthly Wheat export seasonality |
+| `competing_supplier_map` | key rival supplier view for major trade corridors |
+| `data_gap_log` | explicit unresolved data gaps for Step 7 |
+
+## Step 7 row counts
+
+| Table | Rows |
+|---|---:|
+| `source_inventory` | `3` |
+| `bilateral_monthly_flows` | `5159` |
+| `trade_corridor_table` | `106` |
+| `over_under_index_matrix` | `89` |
+| `seasonal_export_chart` | `12` |
+| `competing_supplier_map` | `5` |
+| `data_gap_log` | `3` |
+
+## Top export corridors
+
+| Rank | Country | 2025 Quantity | 2025 Value (INR Cr) | 5Y Avg Quantity | 5Y CAGR Qty % |
+|---|---|---:|---:|---:|---:|
+| `1` | `NEPAL` | `12830995.0` | `35.74` | `121657949.0` | `-53.529608` |
+| `2` | `U ARAB EMTS` | `3999900.0` | `18.63` | `207834475.6` | `-69.731989` |
+| `3` | `BHUTAN` | `429523.0` | `1.43` | `1083997.2` | `-31.37048` |
+| `4` | `IRAQ` | `50000.0` | `0.36` | `321995.0` | `-41.189493` |
+| `5` | `KOREA RP` | `22000.0` | `0.23` | `145500885.6` | `-86.685308` |
+
+## Top import source corridors
+
+| Rank | Country | 2025 Quantity | 2025 Value (INR Cr) | 5Y Avg Quantity | 5Y CAGR Qty % |
+|---|---|---:|---:|---:|---:|
+| `1` | `AUSTRALIA` | `97296250.0` | `293.31` | `54219201.4` | `561.217866` |
+| `2` | `UKRAINE` | `13756100.0` | `35.0` | `6768223.333333` | `null` |
+| `3` | `POLAND` | `1959850.0` | `4.87` | `3956795.0` | `null` |
+| `4` | `CROATIA` | `1430760.0` | `3.72` | `1474480.0` | `null` |
+| `5` | `MOLDOVA` | `778870.0` | `2.15` | `355290.0` | `null` |
+
+## Seasonal export chart
+
+| Rank | Month | Avg 5Y Quantity | Avg 5Y Share % |
+|---|---|---:|---:|
+| `1` | `April` | `687094675.2` | `12.979234` |
+| `2` | `May` | `618203806.0` | `11.677884` |
+| `3` | `January` | `525010442.8` | `9.917459` |
+| `4` | `June` | `474033488.0` | `8.954503` |
+| `5` | `August` | `459052898.0` | `8.67152` |
+
+## Step 7 data gaps
+
+| Gap Key | Status | Description |
+|---|---|---|
+| `un_comtrade_destination_denominator` | `open` | destination-country total import denominator is still missing for full over/under-index scoring |
+| `apeda_country_breakdown_wheat` | `open` | APEDA-style corridor enrichment is not yet loaded into the Wheat trade-flow layer |
+| `volza_shipment_intelligence` | `open` | shipment-level private intelligence is not yet added for corridor microstructure review |
+
+## Step 7 short summary
+
+| Item | Status |
+|---|---|
+| Official monthly bilateral Wheat flows loaded | `Yes` |
+| Trade corridor table built | `Yes` |
+| Seasonal export chart built | `Yes` |
+| Competing supplier map built | `Yes` |
+| Over/under-index matrix fully complete | `Partial - destination denominator still pending` |
+
+# Document Step 9 - Risk Register
+
+This section captures the document-aligned Wheat risk register.
+
+## Step 9 overview
+
+| Item | Value |
+|---|---|
+| Step | `Document Step 9 - Risk Register` |
+| Purpose | build a ranked Wheat risk register covering market, weather, geopolitical, policy, and stock-tightness risks |
+| DB | [wheat_risk_register.db](D:/ncel2/ncel-commodity-pricing/SnD/risk_register/wheat/wheat_risk_register.db) |
+| Builder | [build_wheat_risk_register.py](D:/ncel2/ncel-commodity-pricing/SnD/risk_register/wheat/build_wheat_risk_register.py) |
+| Monthly range | `2016-04-01` to `2026-03-01` |
+| Risks implemented | `5` |
+| Alert rule | `composite_risk_score >= 60` |
+
+## Step 9 tables created
+
+| Table | Purpose |
+|---|---|
+| `risk_definitions` | master list of Wheat risk types |
+| `risk_model_reference` | model approach, source data, formula, and confidence by risk |
+| `risk_monthly_metrics` | 10-year monthly risk metric backbone |
+| `risk_register_history` | historical scored register snapshots |
+| `risk_register_current` | current ranked risk register |
+| `risk_alerts` | threshold-based risk alerts |
+
+## Step 9 row counts
+
+| Table | Rows |
+|---|---:|
+| `risk_definitions` | `5` |
+| `risk_model_reference` | `5` |
+| `risk_monthly_metrics` | `600` |
+| `risk_register_history` | `600` |
+| `risk_register_current` | `5` |
+| `risk_alerts` | `272` |
+
+## Risk definitions
+
+| Risk Key | Risk Name | Category | Direction |
+|---|---|---|---|
+| `price_volatility` | `Price volatility` | `market` | `bullish_price_risk` |
+| `weather_climate` | `Weather / climate` | `weather` | `bullish_price_risk` |
+| `geopolitical_black_sea` | `Geopolitical / Black Sea` | `geopolitical` | `bullish_price_risk` |
+| `policy_trade_restriction` | `Policy / trade restriction` | `policy` | `mixed_policy_risk` |
+| `supply_stock_tightness` | `Supply / stock tightness` | `balance_sheet` | `bullish_price_risk` |
+
+## Risk model reference
+
+| Risk Key | Model Approach | Source Data | Confidence |
+|---|---|---|---|
+| `price_volatility` | `6-month rolling standard deviation of monthly returns on the wheat retail pressure index` | `Demand DB retail_price_cpi_wheat_pressure` | `medium` |
+| `weather_climate` | `Temperature anomaly plus frost-risk composite` | `Drivers DB north_india_winter_temperature, frost_risk` | `medium` |
+| `geopolitical_black_sea` | `Weighted geopolitical disruption composite` | `Drivers DB black_sea_corridor, russian_export_policy` | `high` |
+| `policy_trade_restriction` | `Weighted India policy intervention composite` | `Drivers DB india_export_policy, msp` | `medium` |
+| `supply_stock_tightness` | `Inverse stock-cover and delta stress composite` | `Supply DB opening_stock, total_demand_monthly, delta` | `high` |
+
+## Current risk register
+
+| Rank | Risk Key | As Of Month | Probability Score | Impact Score | Composite Risk Score | Severity |
+|---|---|---|---:|---:|---:|---|
+| `1` | `price_volatility` | `2026-03-01` | `90.7563` | `90.3782` | `90.6051` | `critical` |
+| `2` | `weather_climate` | `2026-03-01` | `89.9160` | `87.4580` | `88.9328` | `critical` |
+| `3` | `supply_stock_tightness` | `2026-03-01` | `62.8572` | `75.4286` | `67.8857` | `high` |
+| `4` | `policy_trade_restriction` | `2026-03-01` | `61.3445` | `68.6722` | `64.2756` | `high` |
+| `5` | `geopolitical_black_sea` | `2026-03-01` | `50.4202` | `66.2101` | `56.7362` | `moderate` |
+
+## Step 9 short summary
+
+| Item | Status |
+|---|---|
+| Dedicated Wheat risk DB created | `Yes` |
+| 10-year monthly risk history filled | `Yes` |
+| Current ranked register available | `Yes` |
+| Alert layer available | `Yes` |
+| Advanced external models like GARCH / SPI / NDVI fully fetched | `No - approximated with existing local series` |
 
 # Step 7 — Build Scenarios
 
